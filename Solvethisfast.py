@@ -59,6 +59,10 @@ def get_driver():
         
         # For Streamlit Cloud, directly use Chrome without ChromeDriverManager
         driver = webdriver.Chrome(options=options)
+                # Set extended timeouts for slow CRISPR website
+        driver.set_page_load_timeout(600)
+        driver.set_script_timeout(600)
+        driver.command_executor.set_timeout(600)  
         
         driver.set_page_load_timeout(600)
         driver.set_script_timeout(600)
@@ -560,5 +564,6 @@ if st.session_state.analysis_result:
                     st.write(f"• **{gene}**")
         else:
             st.success("✅ No critical off-targets found for the top-ranked gRNA!")
+
 
 
