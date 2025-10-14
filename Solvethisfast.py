@@ -20,32 +20,54 @@ st.set_page_config(
 )
 
 # --- Selenium WebDriver Setup ---
+# def get_driver():
+#     """Creates a fresh Selenium WebDriver instance with extended timeouts."""
+#     try:
+#         options = Options()
+#         options.add_argument("--headless=new")
+#         options.add_argument("--disable-gpu")
+#         options.add_argument("--remote-allow-origins=*")
+#         options.add_argument("--disable-dev-shm-usage")
+#         options.add_argument("--no-sandbox")
+#         options.add_argument("--disable-blink-features=AutomationControlled")
+#         options.add_experimental_option("detach", True)
+        
+#         user_data_dir = tempfile.mkdtemp()
+#         options.add_argument(f"--user-data-dir={user_data_dir}")
+        
+#         service = Service(ChromeDriverManager().install())
+#         driver = webdriver.Chrome(service=service, options=options)
+        
+#         driver.set_page_load_timeout(600)
+#         driver.set_script_timeout(600)
+#         driver.command_executor.set_timeout(600)
+        
+#         return driver
+#     except Exception as e:
+#         st.error(f"Failed to initialize Chrome driver: {e}")
+#         return None
 def get_driver():
     """Creates a fresh Selenium WebDriver instance with extended timeouts."""
     try:
         options = Options()
         options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
-        options.add_argument("--remote-allow-origins=*")
-        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("detach", True)
+        options.add_argument("--remote-allow-origins=*")
         
-        user_data_dir = tempfile.mkdtemp()
-        options.add_argument(f"--user-data-dir={user_data_dir}")
-        
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+        # For Streamlit Cloud, directly use Chrome without ChromeDriverManager
+        driver = webdriver.Chrome(options=options)
         
         driver.set_page_load_timeout(600)
         driver.set_script_timeout(600)
-        driver.command_executor.set_timeout(600)
         
         return driver
     except Exception as e:
         st.error(f"Failed to initialize Chrome driver: {e}")
         return None
+
 
 # --- Helper Functions ---
 def get_available_genomes(driver):
@@ -538,3 +560,4 @@ if st.session_state.analysis_result:
                     st.write(f"• **{gene}**")
         else:
             st.success("✅ No critical off-targets found for the top-ranked gRNA!")
+
