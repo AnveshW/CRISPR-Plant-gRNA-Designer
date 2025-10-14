@@ -375,7 +375,7 @@ def analyze_crispr_results(driver):
         raise Exception(f"Unexpected error during result analysis: {str(e)}")
 
 # --- Streamlit App UI ---
-st.title("🔬 CRISPR gRNA Design & Analysis Pipeline")
+st.title("🔬 CRISPR gRNA Design & Analysis")
 st.write("This tool automates gRNA design using the CRISPR-PLANT website, then performs a comprehensive off-target analysis to identify the safest and most effective candidates.")
 
 # Initialize session state variables
@@ -515,10 +515,11 @@ if st.session_state.analysis_result:
         for critical in grna['critical_off_targets']:
             if critical['gene'] and critical['gene'] not in critical_genes:
                 critical_genes.append(critical['gene'])
-        
-        critical_genes_str = ', '.join(critical_genes[:3])
-        if len(critical_genes) > 3:
-            critical_genes_str += f" (+{len(critical_genes)-3} more)"
+                
+        critical_genes_str = ', '.join(critical_genes)
+        # critical_genes_str = ', '.join(critical_genes[:3])
+        # if len(critical_genes) > 3:
+        #     critical_genes_str += f" (+{len(critical_genes)-3} more)"
         
         results_data.append({
             'sequence': grna['sequence'],
@@ -533,37 +534,38 @@ if st.session_state.analysis_result:
     results_df = pd.DataFrame(results_data)
     results_df.insert(0, 'Rank', range(1, len(results_df) + 1))
     
-    st.write(f"Found and prioritized **{len(results_df)}** gRNAs based on on-target score (>0.0000), GC content (>40%), genomic region, and off-target analysis.")
+    st.write(f"Found and prioritized **{len(results_df)}** gRNAs")
     
-    st.dataframe(results_df[['Rank', 'sequence', 'score', 'gc_content', 'region', 'critical_count', 'off_target_count', 'critical_genes']], use_container_width=True)
+    st.dataframe(results_df[['Rank', 'sequence', 'gc_content', 'region', 'critical_count', 'off_target_count', 'critical_genes']], use_container_width=True)
     
-    # Display detailed analysis of the best gRNA
-    best_grna = st.session_state.analysis_result[0]
-    st.header("🥇 Top Ranked gRNA Candidate")
+    # # Display detailed analysis of the best gRNA
+    # best_grna = st.session_state.analysis_result[0]
+    # st.header("🥇 Top Ranked gRNA Candidate")
     
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("On-Target Score", f"{best_grna['score']:.4f}")
-    col2.metric("GC Content", f"{best_grna['gc_content']:.1f}%")
-    col3.metric("Critical Off-Targets", best_grna['critical_count'])
-    col4.metric("Total Off-Targets", best_grna['off_target_count'])
+    # col1, col2, col3, col4 = st.columns(4)
+    # col1.metric("On-Target Score", f"{best_grna['score']:.4f}")
+    # col2.metric("GC Content", f"{best_grna['gc_content']:.1f}%")
+    # col3.metric("Critical Off-Targets", best_grna['critical_count'])
+    # col4.metric("Total Off-Targets", best_grna['off_target_count'])
     
-    st.write(f"**Sequence**: `{best_grna['sequence']}`")
-    st.write(f"**Target Region**: `{best_grna['region']}`")
+    # st.write(f"**Sequence**: `{best_grna['sequence']}`")
+    # st.write(f"**Target Region**: `{best_grna['region']}`")
     
-    with st.expander("View Critical Off-Target Details"):
-        if best_grna['critical_off_targets']:
-            off_target_df = pd.DataFrame(best_grna['critical_off_targets'])
-            st.dataframe(off_target_df, use_container_width=True)
+    # with st.expander("View Critical Off-Target Details"):
+    #     if best_grna['critical_off_targets']:
+    #         off_target_df = pd.DataFrame(best_grna['critical_off_targets'])
+    #         st.dataframe(off_target_df, use_container_width=True)
             
-            critical_genes = [ot['gene'] for ot in best_grna['critical_off_targets'] if ot['gene']]
-            unique_critical_genes = list(set(critical_genes))
+    #         critical_genes = [ot['gene'] for ot in best_grna['critical_off_targets'] if ot['gene']]
+    #         unique_critical_genes = list(set(critical_genes))
             
-            if unique_critical_genes:
-                st.subheader("Critical Gene IDs:")
-                for gene in unique_critical_genes:
-                    st.write(f"• **{gene}**")
-        else:
-            st.success("✅ No critical off-targets found for the top-ranked gRNA!")
+    #         if unique_critical_genes:
+    #             st.subheader("Critical Gene IDs:")
+    #             for gene in unique_critical_genes:
+    #                 st.write(f"• **{gene}**")
+    #     else:
+    #         st.success("✅ No critical off-targets found for the top-ranked gRNA!")
+
 
 
 
