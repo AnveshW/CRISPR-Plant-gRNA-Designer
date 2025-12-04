@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 from selenium import webdriver
-# from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-# from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
@@ -20,57 +20,57 @@ st.set_page_config(
 )
 
 # --- Selenium WebDriver Setup ---
-# def get_driver():
-#     """Creates a fresh Selenium WebDriver instance with extended timeouts."""
-#     try:
-#         options = Options()
-#         options.add_argument("--headless=new")
-#         options.add_argument("--disable-gpu")
-#         options.add_argument("--remote-allow-origins=*")
-#         options.add_argument("--disable-dev-shm-usage")
-#         options.add_argument("--no-sandbox")
-#         options.add_argument("--disable-blink-features=AutomationControlled")
-#         options.add_experimental_option("detach", True)
-        
-#         user_data_dir = tempfile.mkdtemp()
-#         options.add_argument(f"--user-data-dir={user_data_dir}")
-        
-#         service = Service(ChromeDriverManager().install())
-#         driver = webdriver.Chrome(service=service, options=options)
-        
-#         driver.set_page_load_timeout(600)
-#         driver.set_script_timeout(600)
-#         driver.command_executor.set_timeout(600)
-        
-#         return driver
-#     except Exception as e:
-#         st.error(f"Failed to initialize Chrome driver: {e}")
-#         return None
 def get_driver():
     """Creates a fresh Selenium WebDriver instance with extended timeouts."""
     try:
         options = Options()
         options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--remote-allow-origins=*")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("detach", True)
         
-        # For Streamlit Cloud, directly use Chrome without ChromeDriverManager
-        driver = webdriver.Chrome(options=options)
-                # Set extended timeouts for slow CRISPR website
+        user_data_dir = tempfile.mkdtemp()
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+        
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
+        
         driver.set_page_load_timeout(600)
         driver.set_script_timeout(600)
-        driver.command_executor.set_timeout(600)  
-        
-        driver.set_page_load_timeout(600)
-        driver.set_script_timeout(600)
+        driver.command_executor.set_timeout(600)
         
         return driver
     except Exception as e:
         st.error(f"Failed to initialize Chrome driver: {e}")
         return None
+# def get_driver():
+#     """Creates a fresh Selenium WebDriver instance with extended timeouts."""
+#     try:
+#         options = Options()
+#         options.add_argument("--headless=new")
+#         options.add_argument("--disable-gpu")
+#         options.add_argument("--no-sandbox")
+#         options.add_argument("--disable-dev-shm-usage")
+#         options.add_argument("--disable-blink-features=AutomationControlled")
+#         options.add_argument("--remote-allow-origins=*")
+        
+#         # For Streamlit Cloud, directly use Chrome without ChromeDriverManager
+#         driver = webdriver.Chrome(options=options)
+#                 # Set extended timeouts for slow CRISPR website
+#         driver.set_page_load_timeout(600)
+#         driver.set_script_timeout(600)
+#         driver.command_executor.set_timeout(600)  
+        
+#         driver.set_page_load_timeout(600)
+#         driver.set_script_timeout(600)
+        
+#         return driver
+#     except Exception as e:
+#         st.error(f"Failed to initialize Chrome driver: {e}")
+#         return None
 
 
 # --- Helper Functions ---
@@ -161,6 +161,7 @@ def find_results_table(driver):
         raise TimeoutException("Timeout waiting for tables to load on results page.")
     except Exception as e:
         raise Exception(f"Error finding results table: {str(e)}")
+
 
 def get_off_target_data_by_interaction(driver, grna_element):
     """Get off-target data by hovering/clicking on gRNA sequence."""
@@ -321,10 +322,6 @@ def analyze_crispr_results(driver):
         if 'status' in st.session_state:
             st.session_state.status.update(label=f"Extracted {len(grna_data)} total gRNAs. Starting prioritization...")
         
-        # Verify we have data to analyze
-        if len(grna_data) == 0:
-            raise ValueError("No gRNAs found in the results. The locus tag may be invalid for this genome.")
-        
         # Prioritization Logic
         high_score = [g for g in grna_data if g['score'] > 0.0000]
         good_gc = [g for g in high_score if g['gc_content'] > 40.0]
@@ -378,8 +375,110 @@ def analyze_crispr_results(driver):
     except Exception as e:
         raise Exception(f"Unexpected error during result analysis: {str(e)}")
 
+
+# # --- Streamlit App UI ---
+# st.title("🔬 CRISPR gRNA Design & Analysis")
+# st.write("This tool automates gRNA design using the CRISPR-PLANT website, then performs a comprehensive off-target analysis to identify the safest and most effective candidates.")
+
+# # Initialize session state variables
+# if 'genomes_list' not in st.session_state:
+#     st.session_state.genomes_list = None
+# if 'analysis_result' not in st.session_state:
+#     st.session_state.analysis_result = None
+
+# # --- Sidebar for User Inputs ---
+# with st.sidebar:
+#     st.header("1. Input Parameters")
+#     st.info("Hii Welcome! Please enter: Locus Tag (Gene ID) or Sequence or Position.")
+#     locus_tag = st.text_input("Locus Tag", "", help="Enter the gene identifier (e.g., AT2G43010, GLYMA14G07880)")
+#     sequence = st.text_area("Sequence", "", help="Or enter your DNA sequence here")
+#     position = st.text_input("Position", "", help="Or enter a genomic position (e.g., Chr1:12345-12500)")
+#     promoter = st.radio(
+#         "snoRNA Promoter",
+#         options=["U6", "U3"],
+#         index=1,
+#         help="U6 and U3(default is U3) are provides for optional promoters design in plant"
+#     )
+
+#     # Validate inputs: only one of the three should be filled
+#     filled = [bool(locus_tag), bool(sequence), bool(position)]
+#     if sum(filled) > 1:
+#         st.warning("Please provide only one of Locus Tag, Sequence, or Position.")
+
+#     pam_options = [
+#         "NGG (SpCas9)",
+#         "NAG (SpCas9)",
+#         "NGA (SpCas9)",
+#         "NNGRRT (SaCas9)",
+#         "NNNRRT (SaCas9-KKH)",
+#         "TTTN (Cpf1)",
+#         "TTN (Cas12a)",
+#         "NG (SpCas9-NG)",
+#         "NGA (SpCas9-VQR)",
+#         "NGCG (SpCas9-VRER)",
+#         "NNGRRT (SaCas9)",
+#         "NNNRRT (SaCas9-KKH)",
+#         "TTTN (AsCpf1)",
+#         "TTTN (LbCpf1)"
+#     ]
+#     pam = st.selectbox(
+#         "PAM Sequence",
+#         options=pam_options,
+#         index=0,
+#         help="Select a PAM type, there are variety of Cas9's PAM and cpf1's PAM to select   "
+#     )
+#     guide_length_options = ["15 bp", "16 bp", "17 bp", "18 bp", "19 bp", "20 bp", "21 bp", "22 bp"]
+#     guide_length = st.selectbox(
+#         "Guide sequence length",
+#         options=guide_length_options,
+#         index=5,  # Default to 20 bp
+#         help="Select the guide RNA spacer length (standard is 20 bp for SpCas9)."
+#     )
+    
+#     st.header("2. Genome Selection")
+    
+#     if st.button("Fetch Available Genomes"):
+#         with st.spinner("Connecting to CRISPR-PLANT to get genome list..."):
+#             driver = get_driver()
+#             if driver:
+#                 try:
+#                     driver.get("http://crispr.hzau.edu.cn/cgi-bin/CRISPR2/CRISPR")
+#                     time.sleep(5)
+                    
+#                     wait = WebDriverWait(driver, 30)
+#                     start_link = wait.until(
+#                         EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Start"))
+#                     )
+#                     start_link.click()
+#                     time.sleep(3)
+                    
+#                     st.session_state.genomes_list = get_available_genomes(driver)
+#                 except Exception as e:
+#                     st.error(f"Could not fetch genomes. Error: {e}")
+#                 finally:
+#                     driver.quit()
+    
+#     if st.session_state.genomes_list:
+#         default_index = st.session_state.genomes_list.index("Glycine max (V1.0)") if "Glycine max (V1.0)" in st.session_state.genomes_list else 0
+#         selected_genome = st.selectbox(
+#             "Select Genome",
+#             st.session_state.genomes_list,
+#             index=default_index,
+#             help="Select the target genome from the list fetched from the website."
+#         )
+#         st.success(f"{len(st.session_state.genomes_list)} genomes loaded successfully!")
+#     else:
+#         st.info("Click 'Fetch Available Genomes' to load the list from the CRISPR-PLANT website.")
+    
+#     st.header("3. Run Analysis")
+#     # Validate input before enabling run button
+#     input_valid = (sum(filled) == 1)
+#     if not input_valid:
+#         st.warning("Please provide exactly one of Locus Tag, Sequence, or Position to proceed.")
+    
+#     run_button = st.button("🚀 Design and Analyze gRNAs", type="primary", disabled=(not st.session_state.genomes_list or not input_valid))
 # --- Streamlit App UI ---
-st.title("🔬 CRISPR gRNA Design & Analysis")
+st.title("🔬 CRISPR gRNA Design & Analysis Pipeline")
 st.write("This tool automates gRNA design using the CRISPR-PLANT website, then performs a comprehensive off-target analysis to identify the safest and most effective candidates.")
 
 # Initialize session state variables
@@ -391,22 +490,29 @@ if 'analysis_result' not in st.session_state:
 # --- Sidebar for User Inputs ---
 with st.sidebar:
     st.header("1. Input Parameters")
-    st.info("Hii Welcome! Please enter: Locus Tag (Gene ID) or Sequence or Position.")
-    locus_tag = st.text_input("Locus Tag", "", help="Enter the gene identifier (e.g., AT2G43010, GLYMA14G07880)")
-    sequence = st.text_area("Sequence", "", help="Or enter your DNA sequence here")
-    position = st.text_input("Position", "", help="Or enter a genomic position (e.g., Chr1:12345-12500)")
-    promoter = st.radio(
-        "snoRNA Promoter",
-        options=["U6", "U3"],
-        index=1,
-        help="U6 and U3(default is U3) are provides for optional promoters design in plant"
+    
+    # Use a selectbox to choose input type (CRITICAL FIX)
+    input_type = st.radio(
+        "Input Type",
+        options=["Locus Tag", "Sequence", "Genomic Position"],
+        help="Choose which type of input you want to provide"
     )
-
-    # Validate inputs: only one of the three should be filled
-    filled = [bool(locus_tag), bool(sequence), bool(position)]
-    if sum(filled) > 1:
-        st.warning("Please provide only one of Locus Tag, Sequence, or Position.")
-
+    
+    # Only show the relevant input field based on selection
+    if input_type == "Locus Tag":
+        locus_tag = st.text_input("Locus Tag", "GLYMA14G07880", help="Enter the gene identifier (e.g., AT2G43010)")
+        sequence = None
+        position = None
+    elif input_type == "Sequence":
+        locus_tag = None
+        sequence = st.text_area("DNA Sequence", "", help="Enter your DNA sequence here (ATCG only)")
+        position = None
+    else:  # Genomic Position
+        locus_tag = None
+        sequence = None
+        position = st.text_input("Genomic Position", "", help="e.g., Chr1:12345-12500")
+    
+    # PAM Selection
     pam_options = [
         "NGG (SpCas9)",
         "NAG (SpCas9)",
@@ -418,8 +524,6 @@ with st.sidebar:
         "NG (SpCas9-NG)",
         "NGA (SpCas9-VQR)",
         "NGCG (SpCas9-VRER)",
-        "NNGRRT (SaCas9)",
-        "NNNRRT (SaCas9-KKH)",
         "TTTN (AsCpf1)",
         "TTTN (LbCpf1)"
     ]
@@ -427,15 +531,29 @@ with st.sidebar:
         "PAM Sequence",
         options=pam_options,
         index=0,
-        help="Select a PAM type, there are variety of Cas9's PAM and cpf1's PAM to select   "
+        help="Select a PAM type. NGG is standard for SpCas9."
     )
-    guide_length_options = ["15 bp", "16 bp", "17 bp", "18 bp", "19 bp", "20 bp", "21 bp", "22 bp"]
+    
+    # Guide Length Selection (using selectbox)
     guide_length = st.selectbox(
-        "Guide sequence length",
-        options=guide_length_options,
+        "Guide Sequence Length",
+        options=["15 bp", "16 bp", "17 bp", "18 bp", "19 bp", "20 bp", "21 bp", "22 bp"],
         index=5,  # Default to 20 bp
-        help="Select the guide RNA spacer length (standard is 20 bp for SpCas9)."
+        help="Select the guide RNA spacer length. Standard is 20 bp for SpCas9."
     )
+    
+    # snoRNA Promoter (NOW AS RADIO INSTEAD OF CHECKBOX)
+    promoter = st.radio(
+        "snoRNA Promoter",
+        options=["U3 (default)", "U6"],
+        index=0,
+        help="Choose the promoter for plant snoRNA design"
+    )
+    
+    # Validate input
+    has_input = any([locus_tag, sequence, position])
+    if not has_input:
+        st.warning("⚠️ Please provide an input (Locus Tag, Sequence, or Position)")
     
     st.header("2. Genome Selection")
     
@@ -473,90 +591,343 @@ with st.sidebar:
         st.info("Click 'Fetch Available Genomes' to load the list from the CRISPR-PLANT website.")
     
     st.header("3. Run Analysis")
-    # Validate input before enabling run button
-    input_valid = (sum(filled) == 1)
-    if not input_valid:
-        st.warning("Please provide exactly one of Locus Tag, Sequence, or Position to proceed.")
-    
-    run_button = st.button("🚀 Design and Analyze gRNAs", type="primary", disabled=(not st.session_state.genomes_list or not input_valid))
+    run_button = st.button(
+        "🚀 Design and Analyze gRNAs", 
+        type="primary", 
+        disabled=(not st.session_state.genomes_list or not has_input)
+    )
 
+
+# # --- Streamlit App UI ---
+# st.title("🔬 CRISPR gRNA Design & Analysis Pipeline")
+# st.write("This tool automates gRNA design using the CRISPR-PLANT website, then performs a comprehensive off-target analysis to identify the safest and most effective candidates.")
+
+# # Initialize session state variables
+# if 'genomes_list' not in st.session_state:
+#     st.session_state.genomes_list = None
+# if 'analysis_result' not in st.session_state:
+#     st.session_state.analysis_result = None
+
+# # --- Sidebar for User Inputs ---
+# with st.sidebar:
+#     st.header("1. Input Parameters")
+#     locus_tag = st.text_input("Locus Tag", "GLYMA14G07880", help="Enter the gene identifier (e.g., AT2G43010).")
+#     snoRNA = st.checkbox("Check snoRNA?", True)
+    
+#     st.header("2. Genome Selection")
+    
+#     if st.button("Fetch Available Genomes"):
+#         with st.spinner("Connecting to CRISPR-PLANT to get genome list..."):
+#             driver = get_driver()
+#             if driver:
+#                 try:
+#                     driver.get("http://crispr.hzau.edu.cn/cgi-bin/CRISPR2/CRISPR")
+#                     time.sleep(5)
+                    
+#                     wait = WebDriverWait(driver, 30)
+#                     start_link = wait.until(
+#                         EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Start"))
+#                     )
+#                     start_link.click()
+#                     time.sleep(3)
+                    
+#                     st.session_state.genomes_list = get_available_genomes(driver)
+#                 except Exception as e:
+#                     st.error(f"Could not fetch genomes. Error: {e}")
+#                 finally:
+#                     driver.quit()
+    
+#     if st.session_state.genomes_list:
+#         default_index = st.session_state.genomes_list.index("Glycine max (V1.0)") if "Glycine max (V1.0)" in st.session_state.genomes_list else 0
+#         selected_genome = st.selectbox(
+#             "Select Genome",
+#             st.session_state.genomes_list,
+#             index=default_index,
+#             help="Select the target genome from the list fetched from the website."
+#         )
+#         st.success(f"{len(st.session_state.genomes_list)} genomes loaded successfully!")
+#     else:
+#         st.info("Click 'Fetch Available Genomes' to load the list from the CRISPR-PLANT website.")
+    
+#     st.header("3. Run Analysis")
+#     run_button = st.button("🚀 Design and Analyze gRNAs", type="primary", disabled=(not st.session_state.genomes_list))
+
+# # --- Main Page for Outputs ---
+# if run_button:
+#     st.session_state.analysis_result = None
+#     driver = get_driver()
+
+#     if not driver:
+#         st.error("Failed to initialize web driver. Please try again.")
+#     else:
+#         with st.status("Running CRISPR Analysis Pipeline...", expanded=True) as status:
+#             st.session_state.status = status
+
+#             # Initialize filter variables in session state
+#             if 'filter_a' not in st.session_state:
+#                 st.session_state.filter_a = False
+#             if 'filter_g' not in st.session_state:
+#                 st.session_state.filter_g = False
+
+#             try:
+#                 # Step 1: Navigate and submit form
+#                 status.update(label="Navigating to CRISPR-PLANT and submitting your job...")
+#                 driver.get("http://crispr.hzau.edu.cn/cgi-bin/CRISPR2/CRISPR")
+#                 time.sleep(5)
+
+#                 wait = WebDriverWait(driver, 30)
+#                 start_link = wait.until(
+#                     EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Start"))
+#                 )
+#                 start_link.click()
+#                 time.sleep(3)
+
+#                 dropdown = wait.until(EC.presence_of_element_located((By.ID, "name_db")))
+#                 dropdown.find_element(By.XPATH, f"//option[. = '{selected_genome}']").click()
+#                 time.sleep(1)
+
+#                 # Select PAM dropdown by index
+#                 from selenium.webdriver.support.ui import Select
+#                 pam_dropdown = wait.until(EC.presence_of_element_located((By.ID, "pppp")))
+#                 pam_index = pam_options.index(pam) if pam in pam_options else 0
+#                 Select(pam_dropdown).select_by_index(pam_index)
+
+#                 # Select guide sequence length by index
+#                 guide_length_dropdown = wait.until(EC.presence_of_element_located((By.ID, "spacer_length")))
+#                 guide_length_index = guide_length_options.index(guide_length)
+#                 Select(guide_length_dropdown).select_by_index(guide_length_index)
+
+#                 if locus_tag:
+#                     # If using locus tag
+#                     locus_input = wait.until(EC.presence_of_element_located((By.ID, "loc_search")))
+#                     locus_input.clear()
+#                     locus_input.send_keys(locus_tag)
+#                 elif sequence:
+#                     # If using sequence
+#                     sequence_input = wait.until(EC.presence_of_element_located((By.ID, "sequenceid")))
+#                     sequence_input.clear()
+#                     sequence_input.send_keys(sequence)
+#                 elif position:
+#                     # If using position
+#                     position_input = wait.until(EC.presence_of_element_located((By.ID, "position")))
+#                     position_input.clear()
+#                     position_input.send_keys(position)
+
+#                 # Select the correct snoRNA promoter radio button
+#                 if promoter == "U6":
+#                     driver.find_element(By.CSS_SELECTOR, "label:nth-child(1) > #ppp").click()
+#                 else:
+#                     driver.find_element(By.CSS_SELECTOR, "label:nth-child(2) > #ppp").click()
+
+#                 submit_button = wait.until(
+#                     EC.element_to_be_clickable((By.NAME, ".submit"))
+#                 )
+#                 submit_button.click()
+
+#                 status.update(label=f"Job submitted for '{locus_tag}'. Waiting for results... (This can take up to a minute)")
+#                 time.sleep(20)
+
+#                 time.sleep(2)
+#                 status.update(label="Starting gRNA analysis...")
+#                 final_results = analyze_crispr_results(driver)
+#                 st.session_state.analysis_result = final_results
+#                 status.update(label="Analysis Complete!", state="complete", expanded=False)
+                
+#             except TimeoutException as e:
+#                 status.update(label="Timeout error occurred!", state="error")
+#                 st.error(f"⏱️ **Timeout Error**: {str(e)}")
+#                 st.warning(f"**Possible reasons:**\n- The locus tag '{locus_tag}' may not exist in the selected genome\n- The CRISPR server is taking too long to respond\n- Network connectivity issues\n\n**Suggestions:**\n- Verify the locus tag is correct for '{selected_genome}'\n- Try again in a few minutes\n- Try a different locus tag that is known to work")
+                
+#             except NoSuchElementException as e:
+#                 status.update(label="Could not find results!", state="error")
+#                 st.error(f"❌ **Element Not Found**: {str(e)}")
+#                 st.warning(f"**Possible reasons:**\n- The locus tag '{locus_tag}' does not exist in '{selected_genome}'\n- The results page structure is different than expected\n- No gRNAs could be designed for this target\n\n**Suggestions:**\n- Double-check the locus tag spelling and format\n- Verify this gene exists in the selected genome\n- Try a different locus tag (e.g., 'GLYMA14G07880' or 'GLYMA13G08120' work for Glycine max)")
+                
+#             except ValueError as e:
+#                 status.update(label="No results found!", state="error")
+#                 st.error(f"❌ **No Valid Results**: {str(e)}")
+#                 st.warning(f"The analysis completed but no valid gRNAs were found that meet the quality criteria.")
+                
+#             except WebDriverException as e:
+#                 status.update(label="Browser error occurred!", state="error")
+#                 st.error(f"🌐 **Browser Error**: {str(e)}")
+#                 st.warning("The CRISPR-PLANT website may be temporarily unavailable. Please try again later.")
+                
+#             except Exception as e:
+#                 status.update(label="An error occurred!", state="error")
+#                 st.error(f"⚠️ **Unexpected Error**: {str(e)}")
+#                 st.warning("An unexpected error occurred. Please try again or contact support if the problem persists.")
+            
+#             finally:
+#                 driver.quit()
+# # --- Main Page for Outputs ---
+# if run_button:
+#     st.session_state.analysis_result = None
+#     driver = get_driver()
+    
+#     if not driver:
+#         st.error("Failed to initialize web driver. Please try again.")
+#     else:
+#         with st.status("Running CRISPR Analysis Pipeline...", expanded=True) as status:
+#             st.session_state.status = status
+            
+#             try:
+#                 # Step 1: Navigate and submit form
+#                 status.update(label="Navigating to CRISPR-PLANT and submitting your job...")
+#                 driver.get("http://crispr.hzau.edu.cn/cgi-bin/CRISPR2/CRISPR")
+#                 time.sleep(5)
+                
+#                 wait = WebDriverWait(driver, 30)
+#                 start_link = wait.until(
+#                     EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Start"))
+#                 )
+#                 start_link.click()
+#                 time.sleep(3)
+                
+#                 dropdown = wait.until(EC.presence_of_element_located((By.ID, "name_db")))
+#                 dropdown.find_element(By.XPATH, f"//option[. = '{selected_genome}']").click()
+#                 time.sleep(1)
+                
+#                 locus_input = wait.until(EC.presence_of_element_located((By.ID, "loc_search")))
+#                 locus_input.clear()
+#                 locus_input.send_keys(locus_tag)
+                
+#                 if snoRNA:
+#                     driver.find_element(By.CSS_SELECTOR, "label:nth-child(2) > #ppp").click()
+                
+#                 submit_button = wait.until(
+#                     EC.element_to_be_clickable((By.NAME, ".submit"))
+#                 )
+#                 submit_button.click()
+                
+#                 status.update(label=f"Job submitted for '{locus_tag}'. Waiting for results... (This can take up to a minute)")
+#                 time.sleep(20)
+                
+#                 # Step 2: Analyze the results
+#                 status.update(label="Results received! Parsing and analyzing gRNAs...")
+#                 final_results = analyze_crispr_results(driver)
+#                 st.session_state.analysis_result = final_results
+#                 status.update(label="Analysis Complete!", state="complete", expanded=False)
+                
+#             except TimeoutException as e:
+#                 status.update(label="Timeout error occurred!", state="error")
+#                 st.error(f"⏱️ **Timeout Error**: {str(e)}")
+#                 st.warning(f"**Possible reasons:**\n- The locus tag '{locus_tag}' may not exist in the selected genome\n- The CRISPR server is taking too long to respond\n- Network connectivity issues\n\n**Suggestions:**\n- Verify the locus tag is correct for '{selected_genome}'\n- Try again in a few minutes\n- Try a different locus tag that is known to work")
+                
+#             except NoSuchElementException as e:
+#                 status.update(label="Could not find results!", state="error")
+#                 st.error(f"❌ **Element Not Found**: {str(e)}")
+#                 st.warning(f"**Possible reasons:**\n- The locus tag '{locus_tag}' does not exist in '{selected_genome}'\n- The results page structure is different than expected\n- No gRNAs could be designed for this target\n\n**Suggestions:**\n- Double-check the locus tag spelling and format\n- Verify this gene exists in the selected genome\n- Try a different locus tag (e.g., 'GLYMA14G07880' or 'GLYMA13G08120' work for Glycine max)")
+                
+#             except ValueError as e:
+#                 status.update(label="No results found!", state="error")
+#                 st.error(f"❌ **No Valid Results**: {str(e)}")
+#                 st.warning(f"The analysis completed but no valid gRNAs were found that meet the quality criteria.")
+                
+#             except WebDriverException as e:
+#                 status.update(label="Browser error occurred!", state="error")
+#                 st.error(f"🌐 **Browser Error**: {str(e)}")
+#                 st.warning("The CRISPR-PLANT website may be temporarily unavailable. Please try again later.")
+                
+#             except Exception as e:
+#                 status.update(label="An error occurred!", state="error")
+#                 st.error(f"⚠️ **Unexpected Error**: {str(e)}")
+#                 st.warning("An unexpected error occurred. Please try again or contact support if the problem persists.")
+            
+#             finally:
+#                 driver.quit()
 # --- Main Page for Outputs ---
 if run_button:
     st.session_state.analysis_result = None
     driver = get_driver()
-
     if not driver:
         st.error("Failed to initialize web driver. Please try again.")
     else:
         with st.status("Running CRISPR Analysis Pipeline...", expanded=True) as status:
             st.session_state.status = status
-
-            # Initialize filter variables in session state
-            if 'filter_a' not in st.session_state:
-                st.session_state.filter_a = False
-            if 'filter_g' not in st.session_state:
-                st.session_state.filter_g = False
-
             try:
                 # Step 1: Navigate and submit form
                 status.update(label="Navigating to CRISPR-PLANT and submitting your job...")
                 driver.get("http://crispr.hzau.edu.cn/cgi-bin/CRISPR2/CRISPR")
                 time.sleep(5)
-
+                
                 wait = WebDriverWait(driver, 30)
                 start_link = wait.until(
                     EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Start"))
                 )
                 start_link.click()
                 time.sleep(3)
-
+                
+                # Select genome
                 dropdown = wait.until(EC.presence_of_element_located((By.ID, "name_db")))
                 dropdown.find_element(By.XPATH, f"//option[. = '{selected_genome}']").click()
                 time.sleep(1)
-
-                # Select PAM dropdown by index
-                from selenium.webdriver.support.ui import Select
+                
+                # Select PAM (MAP PAM STRING TO INDEX)
+                pam_map = {
+                    "NGG (SpCas9)": 0,
+                    "NAG (SpCas9)": 1,
+                    "NGA (SpCas9)": 2,
+                    "NNGRRT (SaCas9)": 3,
+                    "NNNRRT (SaCas9-KKH)": 4,
+                    "TTTN (Cpf1)": 5,
+                    "TTN (Cas12a)": 6,
+                    "NG (SpCas9-NG)": 7,
+                    "NGA (SpCas9-VQR)": 8,
+                    "NGCG (SpCas9-VRER)": 9,
+                    "TTTN (AsCpf1)": 10,
+                    "TTTN (LbCpf1)": 11
+                }
                 pam_dropdown = wait.until(EC.presence_of_element_located((By.ID, "pppp")))
-                pam_index = pam_options.index(pam) if pam in pam_options else 0
-                Select(pam_dropdown).select_by_index(pam_index)
-
-                # Select guide sequence length by index
+                Select(pam_dropdown).select_by_index(pam_map.get(pam, 0))
+                time.sleep(0.5)
+                
+                # Select guide sequence length (EXTRACT NUMERIC VALUE AND SELECT)
+                guide_length_numeric = guide_length.split()[0]  # Extract "20" from "20 bp"
                 guide_length_dropdown = wait.until(EC.presence_of_element_located((By.ID, "spacer_length")))
-                guide_length_index = guide_length_options.index(guide_length)
-                Select(guide_length_dropdown).select_by_index(guide_length_index)
-
+                # Try to select by value attribute first
+                try:
+                    Select(guide_length_dropdown).select_by_value(guide_length_numeric)
+                except:
+                    # If value doesn't work, try by index using the numeric value
+                    guide_length_index = int(guide_length_numeric) - 15
+                    Select(guide_length_dropdown).select_by_index(guide_length_index)
+                time.sleep(0.5)
+                
+                # Select snoRNA promoter (MAP PROMOTER TO RADIO BUTTON)
+                if promoter == "U6":
+                    driver.find_element(By.CSS_SELECTOR, "label:nth-child(1) > #ppp").click()
+                else:  # U3 (default)
+                    driver.find_element(By.CSS_SELECTOR, "label:nth-child(2) > #ppp").click()
+                time.sleep(0.5)
+                
+                # Fill in the input based on type
                 if locus_tag:
-                    # If using locus tag
                     locus_input = wait.until(EC.presence_of_element_located((By.ID, "loc_search")))
                     locus_input.clear()
                     locus_input.send_keys(locus_tag)
+                    status.update(label=f"Submitted for Locus Tag: '{locus_tag}'")
                 elif sequence:
-                    # If using sequence
                     sequence_input = wait.until(EC.presence_of_element_located((By.ID, "sequenceid")))
                     sequence_input.clear()
                     sequence_input.send_keys(sequence)
+                    status.update(label="Submitted with sequence input")
                 elif position:
-                    # If using position
                     position_input = wait.until(EC.presence_of_element_located((By.ID, "position")))
                     position_input.clear()
                     position_input.send_keys(position)
-
-                # Select the correct snoRNA promoter radio button
-                if promoter == "U6":
-                    driver.find_element(By.CSS_SELECTOR, "label:nth-child(1) > #ppp").click()
-                else:
-                    driver.find_element(By.CSS_SELECTOR, "label:nth-child(2) > #ppp").click()
-
+                    status.update(label="Submitted with genomic position")
+                
+                # Submit form
                 submit_button = wait.until(
                     EC.element_to_be_clickable((By.NAME, ".submit"))
                 )
                 submit_button.click()
-
-                status.update(label=f"Job submitted for '{locus_tag}'. Waiting for results... (This can take up to a minute)")
+                status.update(label="Job submitted. Waiting for results... (This can take up to a minute)")
                 time.sleep(20)
-
-                time.sleep(2)
-                status.update(label="Starting gRNA analysis...")
+                
+                # Step 2: Analyze the results
+                status.update(label="Results received! Parsing and analyzing gRNAs...")
                 final_results = analyze_crispr_results(driver)
                 st.session_state.analysis_result = final_results
                 status.update(label="Analysis Complete!", state="complete", expanded=False)
@@ -564,12 +935,12 @@ if run_button:
             except TimeoutException as e:
                 status.update(label="Timeout error occurred!", state="error")
                 st.error(f"⏱️ **Timeout Error**: {str(e)}")
-                st.warning(f"**Possible reasons:**\n- The locus tag '{locus_tag}' may not exist in the selected genome\n- The CRISPR server is taking too long to respond\n- Network connectivity issues\n\n**Suggestions:**\n- Verify the locus tag is correct for '{selected_genome}'\n- Try again in a few minutes\n- Try a different locus tag that is known to work")
+                st.warning(f"**Possible reasons:**\n- The input may not exist in the selected genome\n- The CRISPR server is taking too long to respond\n- Network connectivity issues\n\n**Suggestions:**\n- Verify your input is correct\n- Try again in a few minutes\n- Check the CRISPR-PLANT website status")
                 
             except NoSuchElementException as e:
                 status.update(label="Could not find results!", state="error")
                 st.error(f"❌ **Element Not Found**: {str(e)}")
-                st.warning(f"**Possible reasons:**\n- The locus tag '{locus_tag}' does not exist in '{selected_genome}'\n- The results page structure is different than expected\n- No gRNAs could be designed for this target\n\n**Suggestions:**\n- Double-check the locus tag spelling and format\n- Verify this gene exists in the selected genome\n- Try a different locus tag (e.g., 'GLYMA14G07880' or 'GLYMA13G08120' work for Glycine max)")
+                st.warning(f"**Possible reasons:**\n- The input does not exist in '{selected_genome}'\n- The results page structure is different than expected\n- No gRNAs could be designed for this target\n\n**Suggestions:**\n- Double-check your input\n- Try a different input (known to work: 'GLYMA14G07880')\n- Verify the selected genome")
                 
             except ValueError as e:
                 status.update(label="No results found!", state="error")
@@ -585,62 +956,198 @@ if run_button:
                 status.update(label="An error occurred!", state="error")
                 st.error(f"⚠️ **Unexpected Error**: {str(e)}")
                 st.warning("An unexpected error occurred. Please try again or contact support if the problem persists.")
-            
+                
             finally:
                 driver.quit()
+# # Display the results if they exist in the session state
+# if st.session_state.analysis_result:
+#     st.header("📊 Analysis Results")
 
+#     # # Add nucleotide filter options
+#     # col1, col2 = st.columns(2)
+#     # with col1:
+#     #     st.session_state.filter_a = st.checkbox("Filter for gRNAs starting with 'A'", 
+#     #                                           help="Only include gRNAs that begin with Adenine (A)",
+#     #                                           value=st.session_state.filter_a)
+#     # with col2:
+#     #     st.session_state.filter_g = st.checkbox("Filter for gRNAs starting with 'G'", 
+#     #                                           help="Only include gRNAs that begin with Guanine (G)",
+#     #                                           value=st.session_state.filter_g)
+
+#     # if not (st.session_state.filter_a or st.session_state.filter_g):
+#     #     st.info("No nucleotide filter selected - all gRNAs will be included.")
+    
+#     results_data = []
+#     for grna in st.session_state.analysis_result:
+#         critical_genes = []
+#         for critical in grna['critical_off_targets']:
+#             if critical['gene'] and critical['gene'] not in critical_genes:
+#                 critical_genes.append(critical['gene'])
+        
+#         critical_genes_str = ', '.join(critical_genes[:3])
+#         if len(critical_genes) > 3:
+#             critical_genes_str += f" (+{len(critical_genes)-3} more)"
+        
+#         results_data.append({
+#             'sequence': grna['sequence'],
+#             # 'score': grna['score'],
+#             'gc_content': grna['gc_content'],
+#             'region': grna['region'],
+#             'off_target_count': grna['off_target_count'],
+#             'critical_count': grna['critical_count'],
+#             'critical_genes': critical_genes_str
+#         })
+    
+#     results_df = pd.DataFrame(results_data)
+#     results_df.insert(0, 'Rank', range(1, len(results_df) + 1))
+    
+#     st.write(f"Found and prioritized **{len(results_df)}** gRNAs based on on-target score (>0.0000), GC content (>40%), genomic region, and off-target analysis.")
+    
+#     st.dataframe(results_df[['Rank', 'sequence', 'gc_content', 'region', 'critical_count', 'off_target_count', 'critical_genes']], use_container_width=True)
 # Display the results if they exist in the session state
 if st.session_state.analysis_result:
     st.header("📊 Analysis Results")
     
-    # Add nucleotide filter options
-    col1, col2 = st.columns(2)
-    with col1:
-        st.session_state.filter_a = st.checkbox("Filter for gRNAs starting with 'A'", 
-                                              help="Only include gRNAs that begin with Adenine (A)",
-                                              value=st.session_state.filter_a)
-    with col2:
-        st.session_state.filter_g = st.checkbox("Filter for gRNAs starting with 'G'", 
-                                              help="Only include gRNAs that begin with Guanine (G)",
-                                              value=st.session_state.filter_g)
-
-    if not (st.session_state.filter_a or st.session_state.filter_g):
-        st.info("No nucleotide filter selected - all gRNAs will be included.")
-    
     results_data = []
     for grna in st.session_state.analysis_result:
-        # Apply nucleotide filters
-        if st.session_state.filter_a or st.session_state.filter_g:
-            if not ((st.session_state.filter_a and grna['sequence'].upper().startswith('A')) or 
-                   (st.session_state.filter_g and grna['sequence'].upper().startswith('G'))):
-                continue
-                
         critical_genes = []
         for critical in grna['critical_off_targets']:
             if critical['gene'] and critical['gene'] not in critical_genes:
                 critical_genes.append(critical['gene'])
-                
-        critical_genes_str = ', '.join(critical_genes)
-        # critical_genes_str = ', '.join(critical_genes[:3])
-        # if len(critical_genes) > 3:
-        #     critical_genes_str += f" (+{len(critical_genes)-3} more)"
+        
+        critical_genes_str = ', '.join(critical_genes[:3])
+        if len(critical_genes) > 3:
+            critical_genes_str += f" (+{len(critical_genes)-3} more)"
         
         results_data.append({
-            'sequence': grna['sequence'],
-            'score': grna['score'],
-            'gc_content': grna['gc_content'],
-            'region': grna['region'],
-            'off_target_count': grna['off_target_count'],
-            'critical_count': grna['critical_count'],
-            'critical_genes': critical_genes_str
+            'Sequence': grna['sequence'],
+            'GC Content': f"{grna['gc_content']:.1f}%",
+            'Region': grna['region'],
+            'Critical Off-Targets': grna['critical_count'],
+            'Total Off-Targets': grna['off_target_count'],
+            'Critical Genes': critical_genes_str
         })
     
     results_df = pd.DataFrame(results_data)
     results_df.insert(0, 'Rank', range(1, len(results_df) + 1))
     
-    st.write(f"Found and prioritized **{len(results_df)}** gRNAs")
+    # st.write(f"Found and prioritized **{len(results_df)}** gRNAs based on:\n- On-target score > 0.0\n- GC content > 40%\n- Genomic region priority\n- Off-target analysis")
+    st.dataframe(results_df, use_container_width=True)
+
+# # Display the results if they exist in the session state
+# if st.session_state.analysis_result:
+#     st.header("📊 Analysis Results")
     
-    st.dataframe(results_df[['Rank', 'sequence', 'gc_content', 'region', 'critical_count', 'off_target_count', 'critical_genes']], use_container_width=True)
+#     results_data = []
+#     for grna in st.session_state.analysis_result:
+#         critical_genes = []
+#         for critical in grna['critical_off_targets']:
+#             if critical['gene'] and critical['gene'] not in critical_genes:
+#                 critical_genes.append(critical['gene'])
+        
+#         critical_genes_str = ', '.join(critical_genes[:3])
+#         if len(critical_genes) > 3:
+#             critical_genes_str += f" (+{len(critical_genes)-3} more)"
+        
+#         results_data.append({
+#             'sequence': grna['sequence'],
+#             'score': grna['score'],
+#             'gc_content': grna['gc_content'],
+#             'region': grna['region'],
+#             'off_target_count': grna['off_target_count'],
+#             'critical_count': grna['critical_count'],
+#             'critical_genes': critical_genes_str
+#         })
+    
+#     results_df = pd.DataFrame(results_data)
+#     results_df.insert(0, 'Rank', range(1, len(results_df) + 1))
+    
+#     st.write(f"Found and prioritized **{len(results_df)}** gRNAs based on on-target score (>0.0000), GC content (>40%), genomic region, and off-target analysis.")
+    
+#     st.dataframe(results_df[['Rank', 'sequence', 'score', 'gc_content', 'region', 'critical_count', 'off_target_count', 'critical_genes']], use_container_width=True)
+    
+    
+#     # Display detailed analysis of the best gRNA
+#     best_grna = st.session_state.analysis_result[0]
+#     st.header("🥇 Top Ranked gRNA Candidate")
+    
+#     col1, col2, col3, col4 = st.columns(4)
+#     col1.metric("On-Target Score", f"{best_grna['score']:.4f}")
+#     col2.metric("GC Content", f"{best_grna['gc_content']:.1f}%")
+#     col3.metric("Critical Off-Targets", best_grna['critical_count'])
+#     col4.metric("Total Off-Targets", best_grna['off_target_count'])
+    
+#     st.write(f"**Sequence**: `{best_grna['sequence']}`")
+#     st.write(f"**Target Region**: `{best_grna['region']}`")
+    
+#     with st.expander("View Critical Off-Target Details"):
+#         if best_grna['critical_off_targets']:
+#             off_target_df = pd.DataFrame(best_grna['critical_off_targets'])
+#             st.dataframe(off_target_df, use_container_width=True)
+            
+#             critical_genes = [ot['gene'] for ot in best_grna['critical_off_targets'] if ot['gene']]
+#             unique_critical_genes = list(set(critical_genes))
+            
+#             if unique_critical_genes:
+#                 st.subheader("Critical Gene IDs:")
+#                 for gene in unique_critical_genes:
+#                     st.write(f"• **{gene}**")
+#         else:
+#             st.success("✅ No critical off-targets found for the top-ranked gRNA!")
+
+
+# Display the results if they exist in the session state
+# if st.session_state.analysis_result:
+#     st.header("📊 Analysis Results")
+    
+    # # Add nucleotide filter options
+    # col1, col2 = st.columns(2)
+    # with col1:
+    #     st.session_state.filter_a = st.checkbox("Filter for gRNAs starting with 'A'", 
+    #                                           help="Only include gRNAs that begin with Adenine (A)",
+    #                                           value=st.session_state.filter_a)
+    # with col2:
+    #     st.session_state.filter_g = st.checkbox("Filter for gRNAs starting with 'G'", 
+    #                                           help="Only include gRNAs that begin with Guanine (G)",
+    #                                           value=st.session_state.filter_g)
+
+    # if not (st.session_state.filter_a or st.session_state.filter_g):
+    #     st.info("No nucleotide filter selected - all gRNAs will be included.")
+    
+#     results_data = []
+#     for grna in st.session_state.analysis_result:
+#         # Apply nucleotide filters
+#         if st.session_state.filter_a or st.session_state.filter_g:
+#             if not ((st.session_state.filter_a and grna['sequence'].upper().startswith('A')) or 
+#                    (st.session_state.filter_g and grna['sequence'].upper().startswith('G'))):
+#                 continue
+                
+#         critical_genes = []
+#         for critical in grna['critical_off_targets']:
+#             if critical['gene'] and critical['gene'] not in critical_genes:
+#                 critical_genes.append(critical['gene'])
+                
+#         # critical_genes_str = ', '.join(critical_genes)
+#         critical_genes_str = ', '.join(critical_genes[:3])
+#         if len(critical_genes) > 3:
+#             critical_genes_str += f" (+{len(critical_genes)-3} more)"
+        
+#         results_data.append({
+#             'sequence': grna['sequence'],
+#             'score': grna['score'],
+#             'gc_content': grna['gc_content'],
+#             'region': grna['region'],
+#             'off_target_count': grna['off_target_count'],
+#             'critical_count': grna['critical_count'],
+#             'critical_genes': critical_genes_str
+#         })
+    
+#     results_df = pd.DataFrame(results_data)
+#     results_df.insert(0, 'Rank', range(1, len(results_df) + 1))
+    
+#     st.write(f"Found and prioritized **{len(results_df)}** gRNAs")
+    
+#     st.dataframe(results_df[['Rank', 'sequence', 'score', 'gc_content', 'region', 'critical_count', 'off_target_count', 'critical_genes']], use_container_width=True)
     st.markdown(
         "<div style='margin-top: 24px; padding: 16px; background-color: #f9f9f9; color: #222; border-radius: 8px; border: 1px solid #e0e0e0;'>"
         "<b>This table contains high-quality gRNAs ranked by their on-target efficiency and specificity scores.</b><br>"
@@ -674,6 +1181,4 @@ if st.session_state.analysis_result:
     #                 st.write(f"• **{gene}**")
     #     else:
     #         st.success("✅ No critical off-targets found for the top-ranked gRNA!")
-
-
 
