@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
@@ -35,8 +33,8 @@ def get_driver():
         user_data_dir = tempfile.mkdtemp()
         options.add_argument(f"--user-data-dir={user_data_dir}")
         
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+        # Use webdriver directly without Service/ChromeDriverManager
+        driver = webdriver.Chrome(options=options)
         
         driver.set_page_load_timeout(600)
         driver.set_script_timeout(600)
