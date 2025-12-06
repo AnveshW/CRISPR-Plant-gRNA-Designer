@@ -1013,9 +1013,8 @@ if st.session_state.analysis_result:
             if critical['gene'] and critical['gene'] not in critical_genes:
                 critical_genes.append(critical['gene'])
         
-        critical_genes_str = ', '.join(critical_genes[:3])
-        if len(critical_genes) > 3:
-            critical_genes_str += f" (+{len(critical_genes)-3} more)"
+        # Show all critical genes without truncation
+        critical_genes_str = ', '.join(critical_genes)
         
         results_data.append({
             'Sequence': grna['sequence'],
