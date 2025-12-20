@@ -9,6 +9,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 import time
 import tempfile
+import os
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -22,6 +23,14 @@ def get_driver():
     """Creates a fresh Selenium WebDriver instance with extended timeouts."""
     try:
         options = Options()
+        
+        # --- ADD THIS BLOCK ---
+        # Check if running on Render (or if the specific binary exists)
+        chrome_binary_path = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
+        if os.path.exists(chrome_binary_path):
+            options.binary_location = chrome_binary_path
+        # ----------------------
+
         options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
         options.add_argument("--remote-allow-origins=*")
@@ -44,6 +53,7 @@ def get_driver():
     except Exception as e:
         st.error(f"Failed to initialize Chrome driver: {e}")
         return None
+
 # def get_driver():
 #     """Creates a fresh Selenium WebDriver instance with extended timeouts."""
 #     try:
@@ -1178,4 +1188,5 @@ if st.session_state.analysis_result:
     #                 st.write(f"• **{gene}**")
     #     else:
     #         st.success("✅ No critical off-targets found for the top-ranked gRNA!")
+
 
