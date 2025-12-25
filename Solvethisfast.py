@@ -9,6 +9,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 import time
 import tempfile
+import requests
+import json
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -375,6 +377,186 @@ def analyze_crispr_results(driver):
         raise Exception(f"Unexpected error during result analysis: {str(e)}")
 
 
+# --- OPENALEX API FUNCTIONS ---
+
+def search_openalex(query, per_page=5):
+    """
+    Search OpenAlex API for papers related to a query.
+    Tries multiple search strategies to find relevant papers.
+    """
+    BASE_URL = 'https://api.openalex.org/'
+    endpoint = 'works'
+    
+    try:
+        # Strategy 1: Try with quoted search (most precise)
+        params = {
+            'filter': f'title.search:"{query}" OR abstract.search:"{query}"',
+            'per_page': per_page,
+            'mailto': 'user@example.com'
+        }
+        
+        response = requests.get(BASE_URL + endpoint, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        results = data.get('results', [])
+        
+        # If we got results, return them
+        if results:
+            return results
+        
+        # Strategy 2: If no results, try simpler search without quotes
+        params = {
+            'search': query,
+            'per_page': per_page,
+            'mailto': 'user@example.com'
+        }
+        
+        response = requests.get(BASE_URL + endpoint, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        results = data.get('results', [])
+        
+        if results:
+            return results
+        
+        # Strategy 3: Try with title or abstract separately
+        params = {
+            'filter': f'title.search:{query}',
+            'per_page': per_page,
+            'mailto': 'user@example.com'
+        }
+        
+        response = requests.get(BASE_URL + endpoint, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        results = data.get('results', [])
+        
+        return results
+        
+    except Exception as e:
+        st.error(f"Error fetching papers: {str(e)}")
+        return []
+
+
+def format_paper_result(paper):
+    """
+    Format a single OpenAlex paper result for display with detailed information.
+    """
+    title = paper.get('title', 'No title')
+    authors = paper.get('authorships', [])
+    author_names = [a.get('author', {}).get('display_name', 'Unknown') for a in authors[:3]]
+    author_str = ', '.join(author_names)
+    if len(authors) > 3:
+        author_str += f" et al."
+    
+    year = paper.get('publication_year', 'N/A')
+    doi = paper.get('doi', '')
+    url = paper.get('doi', paper.get('id', '#'))
+    citation_count = paper.get('cited_by_count', 0)
+    
+    # Extract abstract (OpenAlex stores it in abstract_inverted_index format)
+    abstract_text = ''
+    try:
+        abstract_inverted = paper.get('abstract_inverted_index')
+        if abstract_inverted and isinstance(abstract_inverted, dict):
+            # Reconstruct abstract from inverted index
+            # abstract_inverted format: {"word": [0, 5, 12], "another": [1, 8]}
+            max_pos = 0
+            for positions in abstract_inverted.values():
+                if positions:
+                    max_pos = max(max_pos, max(positions))
+            
+            # Create position to word mapping
+            position_map = {}
+            for word, positions in abstract_inverted.items():
+                for pos in positions:
+                    position_map[pos] = word
+            
+            # Build abstract from sorted positions
+            abstract_words = [position_map[i] for i in sorted(position_map.keys())]
+            abstract_text = ' '.join(abstract_words) if abstract_words else ''
+    except Exception as e:
+        abstract_text = ''
+    
+    # Get publication venue (journal name)
+    venue = ''
+    if paper.get('primary_location') and paper['primary_location'].get('source'):
+        venue = paper['primary_location']['source'].get('display_name', '')
+    
+    # Get publication type
+    pub_type = paper.get('type', 'Unknown')
+    
+    # Get keywords/topics
+    keywords = []
+    if paper.get('keywords'):
+        keywords = [kw.get('keyword', '') for kw in paper['keywords'][:5]]
+    
+    # Get open access status
+    is_open_access = paper.get('open_access', {}).get('is_oa', False)
+    
+    return {
+        'title': title,
+        'authors': author_str,
+        'year': year,
+        'citations': citation_count,
+        'url': url,
+        'doi': doi,
+        'abstract': abstract_text,
+        'venue': venue,
+        'type': pub_type,
+        'keywords': keywords,
+        'open_access': is_open_access
+    }
+
+
+def display_paper_details(formatted_paper):
+    """
+    Display detailed paper information in an organized format.
+    """
+    # Title and basic info
+    st.write(f"**Title:** {formatted_paper['title']}")
+    
+    # Authors and year
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.write(f"**Authors:** {formatted_paper['authors']}")
+    with col2:
+        st.write(f"**Year:** {formatted_paper['year']}")
+    
+    # Publication details
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.write(f"**Citations:** {formatted_paper['citations']}")
+    with col2:
+        if formatted_paper['open_access']:
+            st.write("🔓 **Open Access:** Yes")
+        else:
+            st.write("🔒 **Open Access:** No")
+    with col3:
+        st.write(f"**Type:** {formatted_paper['type']}")
+    
+    # Venue/Journal
+    if formatted_paper['venue']:
+        st.write(f"**Journal/Venue:** {formatted_paper['venue']}")
+    
+    # Abstract
+    if formatted_paper['abstract']:
+        with st.expander("📄 Abstract"):
+            st.write(formatted_paper['abstract'])
+    else:
+        st.info("📄 Abstract not available in database please click the doi")
+    
+    # Keywords
+    if formatted_paper['keywords']:
+        st.write(f"**Keywords:** {', '.join([k for k in formatted_paper['keywords'] if k])}")
+    
+    # DOI Link
+    if formatted_paper['doi']:
+        st.write(f"**DOI:** [{formatted_paper['doi']}]({formatted_paper['url']})")
+        st.caption("Click on the DOI to access the full paper and abstract on the publisher's website")
+
+
+
 # # --- Streamlit App UI ---
 # st.title("🔬 CRISPR gRNA Design & Analysis")
 # st.write("This tool automates gRNA design using the CRISPR-PLANT website, then performs a comprehensive off-target analysis to identify the safest and most effective candidates.")
@@ -485,6 +667,7 @@ if 'genomes_list' not in st.session_state:
     st.session_state.genomes_list = None
 if 'analysis_result' not in st.session_state:
     st.session_state.analysis_result = None
+
 
 # --- Sidebar for User Inputs ---
 with st.sidebar:
@@ -1152,6 +1335,102 @@ if st.session_state.analysis_result:
         "We strongly recommend analyzing critical off-target sites through genome database searches and literature review before final gRNA selection to ensure experimental success and minimize unintended effects."
         "</div>", unsafe_allow_html=True
     )
+    
+    # --- PAPER SEARCH SECTION ---
+    st.markdown("---")
+    st.header("📚 Research Paper Explorer")
+    
+    st.write("Search for research papers related to your gene, CRISPR techniques, or specific topics.")
+    
+    # Quick search buttons for common queries
+    col1, col2, col3 = st.columns(3)
+        
+    with col1:
+        if st.button("Papers about CRISPR off-targets"):
+            papers = search_openalex("CRISPR off-target effects")
+            if papers:
+                st.subheader("Recent papers on CRISPR off-targets:")
+                for paper in papers:
+                    formatted = format_paper_result(paper)
+                    with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
+                        display_paper_details(formatted)
+    
+    with col2:
+        # Get the gene from input if available
+        if 'locus_tag' in locals() and locus_tag:
+            if st.button(f"Papers about {locus_tag}"):
+                papers = search_openalex(locus_tag)
+                if papers:
+                    st.subheader(f"Papers related to {locus_tag}:")
+                    for paper in papers:
+                        formatted = format_paper_result(paper)
+                        with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
+                            display_paper_details(formatted)
+    
+    with col3:
+        if st.button("Papers on gRNA design"):
+            papers = search_openalex("guide RNA design optimization")
+            if papers:
+                st.subheader("Papers on gRNA design:")
+                for paper in papers:
+                    formatted = format_paper_result(paper)
+                    with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
+                        display_paper_details(formatted)
+    
+    # Custom search input
+    st.markdown("### Custom Search")
+    custom_query = st.text_input("Enter your search query:", placeholder="e.g., CRISPR Cas9 plant genome editing")
+    
+    if st.button("🔍 Search"):
+        if custom_query:
+            with st.spinner("Searching OpenAlex database..."):
+                papers = search_openalex(custom_query, per_page=10)
+                if papers:
+                    st.success(f"Found {len(papers)} papers")
+                    for paper in papers:
+                        formatted = format_paper_result(paper)
+                        with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
+                            display_paper_details(formatted)
+                else:
+                    st.info("No papers found. Try a different query.")
+    
+    # --- CRITICAL GENES PAPER SEARCH SECTION ---
+    st.markdown("---")
+    st.header("🧬 Critical Off-Target Genes Research")
+    st.write("Explore research papers for each gene identified in your critical off-target analysis.")
+    
+    # Extract genes in table order (as they appear in Critical Genes column)
+    all_critical_genes = []
+    seen_genes = set()
+    
+    for grna in st.session_state.analysis_result:
+        for critical in grna['critical_off_targets']:
+            if critical['gene'] and critical['gene'] not in seen_genes:
+                all_critical_genes.append(critical['gene'])
+                seen_genes.add(critical['gene'])
+    
+    if all_critical_genes:
+        st.info(f"Found {len(all_critical_genes)} unique critical genes across all gRNAs")
+        
+        # Create expandable sections for each gene
+        for gene in all_critical_genes:
+            with st.expander(f"🔍 Papers for gene: **{gene}**", expanded=False):
+                st.write(f"Searching for papers related to {gene}...")
+                
+                # Search for papers on this single gene only
+                papers = search_openalex(gene, per_page=5)
+                
+                if papers:
+                    st.success(f"Found {len(papers)} papers for {gene}")
+                    for idx, paper in enumerate(papers, 1):
+                        formatted = format_paper_result(paper)
+                        with st.expander(f"📄 {idx}. {formatted['title']} ({formatted['year']})"):
+                            display_paper_details(formatted)
+                else:
+                    st.info(f"No papers found for {gene} in OpenAlex database. Try searching for related terms.")
+    else:
+        st.info("No critical off-target genes found in your analysis.")
+
     # # Display detailed analysis of the best gRNA
     # best_grna = st.session_state.analysis_result[0]
     # st.header("🥇 Top Ranked gRNA Candidate")
@@ -1179,5 +1458,4 @@ if st.session_state.analysis_result:
     #                 st.write(f"• **{gene}**")
     #     else:
     #         st.success("✅ No critical off-targets found for the top-ranked gRNA!")
-
 
