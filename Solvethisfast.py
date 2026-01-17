@@ -11,6 +11,7 @@ import time
 import tempfile
 import requests
 import json
+import os
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -436,6 +437,84 @@ def search_openalex(query, per_page=5):
     except Exception as e:
         st.error(f"Error fetching papers: {str(e)}")
         return []
+
+
+def search_google_scholar(query, per_page=10):
+    """
+    Search Google Scholar using SerpAPI for papers related to a query.
+    """
+    try:
+        # SerpAPI key
+        api_key = 'b526e7983c9a751f292575b28bfe1e8734227d4dfaccca90399616e6d4efc907'
+        
+        params = {
+            'engine': 'google_scholar',
+            'q': query,
+            'num': per_page,
+            'api_key': api_key
+        }
+        
+        response = requests.get('https://serpapi.com/search', params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Extract organic results from the response
+        results = data.get('organic_results', [])
+        
+        return results
+        
+    except Exception as e:
+        st.error(f"Error fetching papers from Google Scholar: {str(e)}")
+        return []
+
+
+def format_google_scholar_result(paper):
+    """
+    Format a Google Scholar paper result for display with detailed information.
+    """
+    title = paper.get('title', 'No title')
+    authors = paper.get('publication_info', {}).get('authors', [])
+    author_str = ', '.join([a.get('name', 'Unknown') if isinstance(a, dict) else str(a) for a in authors[:3]]) if authors else 'Unknown'
+    if len(authors) > 3:
+        author_str += " et al."
+    
+    year = paper.get('publication_info', {}).get('publication_date', 'N/A')
+    if year and len(year) >= 4:
+        year = year[-4:]  # Extract just the year
+    
+    url = paper.get('link', '#')
+    citation_count = paper.get('cited_by', 0)
+    
+    # Extract snippet as abstract
+    abstract_text = paper.get('snippet', '')
+    
+    # Publication venue
+    venue = paper.get('publication_info', {}).get('summary', '')
+    
+    # Publication type
+    pub_type = 'Journal Article'  # Default for Google Scholar
+    
+    # Keywords from title
+    keywords = []
+    
+    # Open access status
+    is_open_access = False
+    if paper.get('resources'):
+        is_open_access = True
+    
+    return {
+        'title': title,
+        'authors': author_str,
+        'year': year,
+        'citations': citation_count,
+        'url': url,
+        'doi': url,
+        'abstract': abstract_text,
+        'venue': venue,
+        'type': pub_type,
+        'keywords': keywords,
+        'open_access': is_open_access
+    }
 
 
 def format_paper_result(paper):
@@ -1378,17 +1457,17 @@ if st.session_state.analysis_result:
                         display_paper_details(formatted)
     
     # Custom search input
-    st.markdown("### Custom Search")
+    st.markdown("### Custom Literature Search")
     custom_query = st.text_input("Enter your search query:", placeholder="e.g., CRISPR Cas9 plant genome editing")
     
     if st.button("🔍 Search"):
         if custom_query:
-            with st.spinner("Searching OpenAlex database..."):
-                papers = search_openalex(custom_query, per_page=10)
+            with st.spinner("Searching database..."):
+                papers = search_google_scholar(custom_query, per_page=10)
                 if papers:
                     st.success(f"Found {len(papers)} papers")
                     for paper in papers:
-                        formatted = format_paper_result(paper)
+                        formatted = format_google_scholar_result(paper)
                         with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
                             display_paper_details(formatted)
                 else:
@@ -1458,4 +1537,3 @@ if st.session_state.analysis_result:
     #                 st.write(f"• **{gene}**")
     #     else:
     #         st.success("✅ No critical off-targets found for the top-ranked gRNA!")
-
