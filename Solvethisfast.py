@@ -748,7 +748,7 @@ if st.session_state.analysis_result:
 
     # Download button for top-30 table
     csv_top30 = pd.DataFrame(results_data).to_csv(index=False)
-    input_label = st.session_state.saved_locus_tag or "results"
+    input_label = locus_tag or "results"
     st.download_button(
         label="📥 Download Top 30 Results as CSV",
         data=csv_top30,
@@ -787,8 +787,8 @@ if st.session_state.analysis_result:
 
     analysis_summary = f"""
 Analysis Context:
-- Target Gene: {st.session_state.saved_locus_tag or 'User sequence'}
-- Genome: {st.session_state.saved_selected_genome or 'Unknown'}
+- Target Gene: {locus_tag or 'User sequence'}
+- Genome: {selected_genome or 'Unknown'}
 - Total gRNAs Analyzed: {len(st.session_state.analysis_result)}
 
 All gRNA Candidates:
@@ -891,7 +891,7 @@ Be specific to their data. Be concise (2-3 paragraphs). Be scientifically accura
                         display_paper_details(formatted)
 
     with col2:
-        gene_label = st.session_state.saved_locus_tag
+        gene_label = locus_tag
         if gene_label:
             if st.button(f"Papers about {gene_label}"):
                 papers = search_openalex(gene_label)
