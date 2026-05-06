@@ -802,7 +802,7 @@ All gRNAs shown are categorized by lowest critical off-target count, then off-ta
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
     if 'gemini_client' not in st.session_state:
-        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        gemini_api_key = st.secrets("GEMINI_API_KEY")
         try:
             genai.configure(api_key=gemini_api_key)
             st.session_state.gemini_client = genai.GenerativeModel('gemini-2.5-flash')
