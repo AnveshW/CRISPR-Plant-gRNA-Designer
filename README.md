@@ -39,14 +39,3 @@ streamlit run Solvethisfast.py
 
 > Requires Python 3.8+ and Google Chrome.
 
----
-
-## Citation
-
-If you use this tool, please cite:
-> Waghamare A, Singhal A, Gupta D. *CRISPR-PLANT gRNA Designer with Contextual Intelligence and AI-Powered Decision Support.* Bioinformatics (2026).
-
----
-
-**Contact:** waghamare22@iiserb.ac.in  
-**Supported by:** ICGEB New Delhi & IISER Bhopal
