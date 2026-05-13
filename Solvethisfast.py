@@ -53,23 +53,15 @@ def get_driver():
 # --- Helper Functions ---
 # ============================================================
 def get_available_genomes(driver):
+    """Fetches all available genomes from the dropdown on the CRISPR-PLANT site."""
     try:
         wait = WebDriverWait(driver, 30)
-
-        # Retry up to 3 times if options list comes back empty
-        for attempt in range(3):
-            wait.until(lambda d: len(
-                d.find_element(By.ID, "namedb")
-                .find_elements(By.TAG_NAME, "option")) > 1)
-            
-            dropdown = driver.find_element(By.ID, "namedb")
-            options = dropdown.find_elements(By.TAG_NAME, "option")
-            genomes = [opt.text.strip() for opt in options if opt.text.strip()]
-            
-            if genomes:
-                return genomes
-            time.sleep(2)  # brief wait before retry
-
+        dropdown = wait.until(EC.presence_of_element_located((By.ID, "name_db")))
+        options = dropdown.find_elements(By.TAG_NAME, "option")
+        genomes = [opt.text.strip() for opt in options if opt.text.strip()]
+        return genomes
+    except TimeoutException:
+        st.error("Timeout waiting for genome dropdown to load.")
         return []
     except Exception as e:
         st.error(f"Error fetching genomes: {e}")
@@ -627,12 +619,11 @@ with st.sidebar:
             if driver:
                 try:
                     driver.get("http://crispr.hzau.edu.cn/cgi-bin/CRISPR2/CRISPR")
+                    time.sleep(5)
                     wait = WebDriverWait(driver, 30)
-                    wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
                     start_link = wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Start")))
                     start_link.click()
-                    wait.until(lambda d: len(
-                        d.find_element(By.ID, "namedb").find_elements(By.TAG_NAME, "option")) > 1)
+                    time.sleep(3)
                     st.session_state.genomes_list = get_available_genomes(driver)
                 except Exception as e:
                     st.error(f"Could not fetch genomes. Error: {e}")
