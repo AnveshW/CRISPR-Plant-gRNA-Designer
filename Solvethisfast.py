@@ -7,12 +7,14 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
+from google import genai
+from google.genai import types
 import time
 import tempfile
 import requests
 import json
 import os
-import google.generativeai as genai
+
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -804,8 +806,7 @@ All gRNAs shown are categorized by lowest critical off-target count, then off-ta
     if 'gemini_client' not in st.session_state:
         gemini_api_key = st.secrets["GEMINI_API_KEY"]
         try:
-            genai.configure(api_key=gemini_api_key)
-            st.session_state.gemini_client = genai.GenerativeModel('gemini-2.5-flash')
+            st.session_state.gemini_client = genai.Client(api_key=gemini_api_key)
         except Exception as e:
             st.error("⚠️ Unable to initialize AI assistant. Please try again.")
             st.session_state.gemini_client = None
@@ -859,8 +860,9 @@ Be specific to their data. Be concise (2-3 paragraphs). Be scientifically accura
                 full_response = ""
                 try:
                     with st.spinner("Please wait..."):
-                        response = st.session_state.gemini_client.generate_content(
-                            f"{system_prompt}\n\nUser question: {user_message}"
+                        response = st.session_state.gemini_client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=f"{system_prompt}\n\nQuestion: {user_messsage}"
                         )
                         full_response = response.text
                         message_placeholder.markdown(full_response)
