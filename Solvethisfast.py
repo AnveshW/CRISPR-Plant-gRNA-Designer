@@ -1,3 +1,5 @@
+import logging
+import io
 import streamlit as st
 import pandas as pd
 from selenium import webdriver
@@ -14,6 +16,16 @@ import tempfile
 import requests
 import json
 import os
+
+# ── logger setup ──
+log_stream = io.StringIO()
+logging.basicConfig(
+    stream=log_stream,
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("crispr_tool")
 
 
 # --- Page Configuration ---
@@ -650,72 +662,120 @@ with st.sidebar:
     )
 
 
+def run_analysis_with_retry(selected_genome, locus_tag, sequence, position,
+                             pam, pam_map, guide_length, promoter, max_retries=3):
+    """
+    Runs the full submit + analyze pipeline with automatic retry on failure.
+    Returns (final_results, log_text) tuple.
+    """
+    last_error = None
+
+    for attempt in range(1, max_retries + 1):
+        logger.info(f"=== Attempt {attempt} of {max_retries} ===")
+        driver = get_driver()
+
+        if not driver:
+            logger.error("Failed to initialize Chrome driver.")
+            last_error = Exception("Failed to initialize Chrome driver.")
+            time.sleep(5 * attempt)  # wait longer each retry
+            continue
+
+        try:
+            logger.info(f"Submitting job to CRISPR-PLANT | Genome: {selected_genome} | Input: {locus_tag or sequence or position}")
+
+            if "status" in st.session_state:
+                st.session_state.status.update(
+                    label=f"Attempt {attempt}/{max_retries}: Navigating to CRISPR-PLANT..."
+                )
+
+            submit_crispr_plant_job(
+                driver=driver,
+                selected_genome=selected_genome,
+                locus_tag=locus_tag,
+                sequence=sequence,
+                position=position,
+                pam=pam,
+                pam_map=pam_map,
+                guide_length=guide_length,
+                promoter=promoter,
+                status_label=f"Attempt {attempt}/{max_retries}: Submitting job..."
+            )
+
+            logger.info("Job submitted. Waiting for results table...")
+
+            if "status" in st.session_state:
+                st.session_state.status.update(
+                    label=f"Attempt {attempt}/{max_retries}: Waiting for results..."
+                )
+
+            final_results = analyze_crispr_results(driver)
+            logger.info(f"Success on attempt {attempt}. Got {len(final_results)} gRNAs.")
+            return final_results, log_stream.getvalue()
+
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Attempt {attempt} failed: {type(e).__name__}: {str(e)}")
+
+            if "status" in st.session_state:
+                st.session_state.status.update(
+                    label=f"Attempt {attempt} failed. {'Retrying...' if attempt < max_retries else 'All retries exhausted.'}"
+                )
+
+            wait_time = 10 * attempt  # 10s, 20s, 30s
+            logger.info(f"Waiting {wait_time}s before next attempt...")
+            time.sleep(wait_time)
+
+        finally:
+            try:
+                driver.quit()
+                logger.info("Driver closed.")
+            except Exception:
+                pass
+
+    logger.error(f"All {max_retries} attempts failed. Last error: {last_error}")
+    raise Exception(f"Failed after {max_retries} attempts. Last error: {last_error}")
+
 # ============================================================
 # --- Main Run: Top 30 with Off-Target Analysis (ORIGINAL) ---
 # ============================================================
 if run_button:
-    # Reset all states on fresh run
     st.session_state.analysis_result = None
+    log_stream.truncate(0)
+    log_stream.seek(0)
 
-    driver = get_driver()
-    if not driver:
-        st.error("Failed to initialize web driver. Please try again.")
-    else:
-        with st.status("Running CRISPR Analysis Pipeline...", expanded=True) as status:
-            st.session_state.status = status
-            try:
-                submit_crispr_plant_job(
-                    driver=driver,
-                    selected_genome=selected_genome,
-                    locus_tag=locus_tag,
-                    sequence=sequence,
-                    position=position,
-                    pam=pam,
-                    pam_map=pam_map,
-                    guide_length=guide_length,
-                    promoter=promoter,
-                    status_label="Navigating to CRISPR-PLANT and submitting your job..."
-                )
-                input_hint = locus_tag or (sequence[:20] + "...") if sequence else position
-                status.update(label=f"Job submitted for '{input_hint}'. Waiting for results... (This can take up to a minute)")
+    with st.status("Running CRISPR Analysis Pipeline...", expanded=True) as status:
+        st.session_state.status = status
+        try:
+            input_hint = locus_tag or (sequence[:20] + "..." if sequence else position)
+            final_results, log_text = run_analysis_with_retry(
+                selected_genome=selected_genome,
+                locus_tag=locus_tag,
+                sequence=sequence,
+                position=position,
+                pam=pam,
+                pam_map=pam_map,
+                guide_length=guide_length,
+                promoter=promoter,
+                max_retries=3
+            )
+            st.session_state.analysis_result = final_results
+            st.session_state.last_log = log_text
+            status.update(label="✅ Analysis Complete!", state="complete", expanded=False)
 
-                status.update(label="Results received! Parsing and analyzing top 30 gRNAs with off-target analysis...")
-                final_results = analyze_crispr_results(driver)
-                st.session_state.analysis_result = final_results
-                status.update(label="Analysis Complete!", state="complete", expanded=False)
+        except Exception as e:
+            st.session_state.last_log = log_stream.getvalue()
+            status.update(label="❌ An error occurred!", state="error")
+            st.error(f"⚠️ **Failed after 3 attempts**: {str(e)}")
+            st.warning("The CRISPR-PLANT server may be slow or temporarily unavailable. Please wait a minute and try again.")
 
-            except TimeoutException as e:
-                status.update(label="Timeout error occurred!", state="error")
-                st.error(f"⏱️ **Timeout Error**: {str(e)}")
-                st.warning(
-                    f"**Possible reasons:**\n- The input may not exist in the selected genome\n"
-                    f"- The CRISPR server is taking too long to respond\n- Network connectivity issues\n\n"
-                    f"**Suggestions:**\n- Verify your input is correct for '{selected_genome}'\n"
-                    f"- Try again in a few minutes\n- Try a different input known to work"
+        finally:
+            if "last_log" in st.session_state and st.session_state.last_log:
+                st.download_button(
+                    label="📋 Download Debug Logs",
+                    data=st.session_state.last_log,
+                    file_name="crispr_tool_debug.log",
+                    mime="text/plain"
                 )
-            except NoSuchElementException as e:
-                status.update(label="Could not find results!", state="error")
-                st.error(f"❌ **Element Not Found**: {str(e)}")
-                st.warning(
-                    f"**Possible reasons:**\n- The input does not exist in '{selected_genome}'\n"
-                    f"- The results page structure is different than expected\n\n"
-                    f"**Suggestions:**\n- Double-check your input\n"
-                    f"- Try a known working tag (e.g., 'GLYMA14G07880' or 'GLYMA13G08120')"
-                )
-            except ValueError as e:
-                status.update(label="No results found!", state="error")
-                st.error(f"❌ **No Valid Results**: {str(e)}")
-                st.warning("The analysis completed but no valid gRNAs were found that meet the quality criteria.")
-            except WebDriverException as e:
-                status.update(label="Browser error occurred!", state="error")
-                st.error(f"🌐 **Browser Error**: {str(e)}")
-                st.warning("The CRISPR-PLANT website may be temporarily unavailable. Please try again later.")
-            except Exception as e:
-                status.update(label="An error occurred!", state="error")
-                st.error(f"⚠️ **Unexpected Error**: {str(e)}")
-                st.warning("An unexpected error occurred. Please try again or contact support if the problem persists.")
-            finally:
-                driver.quit()
 
 
 # ============================================================
