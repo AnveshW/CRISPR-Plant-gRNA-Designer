@@ -31,7 +31,7 @@ logger = logging.getLogger("crispr_tool")
 # --- Page Configuration ---
 st.set_page_config(
     page_title="CRISPR gRNA Analysis Tool",
-    page_icon="🔬",
+    page_icon="\U0001f52c",
     layout="wide"
 )
 
@@ -48,13 +48,11 @@ def get_driver():
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_experimental_option("detach", True)
         user_data_dir = tempfile.mkdtemp()
         options.add_argument(f"--user-data-dir={user_data_dir}")
         driver = webdriver.Chrome(options=options)
         driver.set_page_load_timeout(600)
         driver.set_script_timeout(600)
-        driver.command_executor.set_timeout(600)
         return driver
     except Exception as e:
         st.error(f"Failed to initialize Chrome driver: {e}")
@@ -217,7 +215,6 @@ def submit_crispr_plant_job(driver, selected_genome, locus_tag, sequence, positi
                              pam, pam_map, guide_length, promoter, status_label=None):
     """
     Navigates to CRISPR-PLANT, fills the form with user inputs, and submits.
-    Shared by both the main run and the Load All run.
     """
     if status_label and 'status' in st.session_state:
         st.session_state.status.update(label=status_label)
@@ -273,9 +270,8 @@ def submit_crispr_plant_job(driver, selected_genome, locus_tag, sequence, positi
 
 def analyze_crispr_results(driver):
     """
-    Standard analysis — parses all gRNAs, applies quality filters, picks TOP 30,
+    Standard analysis: parses all gRNAs, applies quality filters, picks TOP 30,
     runs off-target interaction on those 30, then re-ranks them.
-    This is the ORIGINAL fast analysis. Completely unchanged.
     """
     try:
         main_table = find_results_table(driver)
@@ -355,7 +351,6 @@ def analyze_crispr_results(driver):
             reverse=True
         )
 
-        # ---- TOP 30 LIMIT (original behaviour, unchanged) ----
         top_grnas = prioritized_grnas[:30] if len(prioritized_grnas) >= 30 else prioritized_grnas
 
         if len(top_grnas) == 0:
@@ -393,135 +388,62 @@ def analyze_crispr_results(driver):
 # ============================================================
 # --- OpenAlex API Functions ---
 # ============================================================
-
 def search_openalex(query, per_page=5):
-    """
-    Search OpenAlex API for papers related to a query.
-    Tries multiple search strategies to find relevant papers.
-    """
     BASE_URL = 'https://api.openalex.org/'
     endpoint = 'works'
-    
     try:
-        # Strategy 1: Try with quoted search (most precise)
-        params = {
-            'filter': f'title.search:"{query}" OR abstract.search:"{query}"',
-            'per_page': per_page,
-            'mailto': 'user@example.com'
-        }
-        
+        params = {'filter': f'title.search:"{query}" OR abstract.search:"{query}"', 'per_page': per_page, 'mailto': 'user@example.com'}
         response = requests.get(BASE_URL + endpoint, params=params, timeout=10)
         response.raise_for_status()
-        data = response.json()
-        results = data.get('results', [])
-        
-        # If we got results, return them
+        results = response.json().get('results', [])
         if results:
             return results
-        
-        # Strategy 2: If no results, try simpler search without quotes
-        params = {
-            'search': query,
-            'per_page': per_page,
-            'mailto': 'user@example.com'
-        }
-        
+        params = {'search': query, 'per_page': per_page, 'mailto': 'user@example.com'}
         response = requests.get(BASE_URL + endpoint, params=params, timeout=10)
         response.raise_for_status()
-        data = response.json()
-        results = data.get('results', [])
-        
+        results = response.json().get('results', [])
         if results:
             return results
-        
-        # Strategy 3: Try with title or abstract separately
-        params = {
-            'filter': f'title.search:{query}',
-            'per_page': per_page,
-            'mailto': 'user@example.com'
-        }
-        
+        params = {'filter': f'title.search:{query}', 'per_page': per_page, 'mailto': 'user@example.com'}
         response = requests.get(BASE_URL + endpoint, params=params, timeout=10)
         response.raise_for_status()
-        data = response.json()
-        results = data.get('results', [])
-        
-        return results
-        
+        return response.json().get('results', [])
     except Exception as e:
         st.error(f"Error fetching papers: {str(e)}")
         return []
 
 
 def format_paper_result(paper):
-    """
-    Format a single OpenAlex paper result for display with detailed information.
-    """
     title = paper.get('title', 'No title')
     authors = paper.get('authorships', [])
     author_names = [a.get('author', {}).get('display_name', 'Unknown') for a in authors[:3]]
     author_str = ', '.join(author_names)
     if len(authors) > 3:
-        author_str += f" et al."
-    
+        author_str += " et al."
     year = paper.get('publication_year', 'N/A')
     doi = paper.get('doi', '')
     url = paper.get('doi', paper.get('id', '#'))
     citation_count = paper.get('cited_by_count', 0)
-    
-    # Extract abstract (OpenAlex stores it in abstract_inverted_index format)
     abstract_text = ''
     try:
         abstract_inverted = paper.get('abstract_inverted_index')
         if abstract_inverted and isinstance(abstract_inverted, dict):
-            # Reconstruct abstract from inverted index
-            # abstract_inverted format: {"word": [0, 5, 12], "another": [1, 8]}
-            max_pos = 0
-            for positions in abstract_inverted.values():
-                if positions:
-                    max_pos = max(max_pos, max(positions))
-            
-            # Create position to word mapping
             position_map = {}
             for word, positions in abstract_inverted.items():
                 for pos in positions:
                     position_map[pos] = word
-            
-            # Build abstract from sorted positions
-            abstract_words = [position_map[i] for i in sorted(position_map.keys())]
-            abstract_text = ' '.join(abstract_words) if abstract_words else ''
-    except Exception as e:
+            abstract_text = ' '.join([position_map[i] for i in sorted(position_map.keys())])
+    except Exception:
         abstract_text = ''
-    
-    # Get publication venue (journal name)
     venue = ''
     if paper.get('primary_location') and paper['primary_location'].get('source'):
         venue = paper['primary_location']['source'].get('display_name', '')
-    
-    # Get publication type
     pub_type = paper.get('type', 'Unknown')
-    
-    # Get keywords/topics
-    keywords = []
-    if paper.get('keywords'):
-        keywords = [kw.get('keyword', '') for kw in paper['keywords'][:5]]
-    
-    # Get open access status
+    keywords = [kw.get('keyword', '') for kw in paper.get('keywords', [])[:5]]
     is_open_access = paper.get('open_access', {}).get('is_oa', False)
-    
-    return {
-        'title': title,
-        'authors': author_str,
-        'year': year,
-        'citations': citation_count,
-        'url': url,
-        'doi': doi,
-        'abstract': abstract_text,
-        'venue': venue,
-        'type': pub_type,
-        'keywords': keywords,
-        'open_access': is_open_access
-    }
+    return {'title': title, 'authors': author_str, 'year': year, 'citations': citation_count,
+            'url': url, 'doi': doi, 'abstract': abstract_text, 'venue': venue,
+            'type': pub_type, 'keywords': keywords, 'open_access': is_open_access}
 
 
 def display_paper_details(formatted_paper):
@@ -535,16 +457,16 @@ def display_paper_details(formatted_paper):
     with col1:
         st.write(f"**Citations:** {formatted_paper['citations']}")
     with col2:
-        st.write("🔓 **Open Access:** Yes" if formatted_paper['open_access'] else "🔒 **Open Access:** No")
+        st.write("\U0001f513 **Open Access:** Yes" if formatted_paper['open_access'] else "\U0001f512 **Open Access:** No")
     with col3:
         st.write(f"**Type:** {formatted_paper['type']}")
     if formatted_paper['venue']:
         st.write(f"**Journal/Venue:** {formatted_paper['venue']}")
     if formatted_paper['abstract']:
-        with st.expander("📄 Abstract"):
+        with st.expander("\U0001f4c4 Abstract"):
             st.write(formatted_paper['abstract'])
     else:
-        st.info("📄 Abstract not available in database please click the doi")
+        st.info("\U0001f4c4 Abstract not available in database — please click the DOI")
     if formatted_paper['keywords']:
         st.write(f"**Keywords:** {', '.join([k for k in formatted_paper['keywords'] if k])}")
     if formatted_paper['doi']:
@@ -555,7 +477,7 @@ def display_paper_details(formatted_paper):
 # ============================================================
 # --- Streamlit App UI ---
 # ============================================================
-st.title("🔬 CRISPR gRNA Design & Analysis Pipeline")
+st.title("\U0001f52c CRISPR gRNA Design & Analysis Pipeline")
 st.write("This tool automates gRNA design using the CRISPR-PLANT website, then performs a comprehensive off-target analysis to identify the safest and most effective candidates.")
 
 # --- Session State Init ---
@@ -563,7 +485,6 @@ if 'genomes_list' not in st.session_state:
     st.session_state.genomes_list = None
 if 'analysis_result' not in st.session_state:
     st.session_state.analysis_result = None
-
 
 
 # ============================================================
@@ -600,28 +521,18 @@ with st.sidebar:
     ]
     pam_map = {p: i for i, p in enumerate(pam_options)}
 
-    pam = st.selectbox(
-        "PAM Sequence", options=pam_options, index=0,
-        help="Select a PAM type. NGG is standard for SpCas9."
-    )
-
+    pam = st.selectbox("PAM Sequence", options=pam_options, index=0, help="Select a PAM type. NGG is standard for SpCas9.")
     guide_length = st.selectbox(
         "Guide Sequence Length",
         options=["15 bp", "16 bp", "17 bp", "18 bp", "19 bp", "20 bp", "21 bp", "22 bp"],
         index=5,
         help="Select the guide RNA spacer length. Standard is 20 bp for SpCas9."
     )
-
-    promoter = st.radio(
-        "snoRNA Promoter",
-        options=["U3 (default)", "U6"],
-        index=0,
-        help="Choose the promoter for plant snoRNA design"
-    )
+    promoter = st.radio("snoRNA Promoter", options=["U3 (default)", "U6"], index=0, help="Choose the promoter for plant snoRNA design")
 
     has_input = any([locus_tag, sequence, position])
     if not has_input:
-        st.warning("⚠️ Please provide an input (Locus Tag, Sequence, or Position)")
+        st.warning("\u26a0\ufe0f Please provide an input (Locus Tag, Sequence, or Position)")
 
     st.header("2. Genome Selection")
 
@@ -656,7 +567,7 @@ with st.sidebar:
 
     st.header("3. Run Analysis")
     run_button = st.button(
-        "🚀 Design and Analyze gRNAs",
+        "\U0001f680 Design and Analyze gRNAs",
         type="primary",
         disabled=(not st.session_state.genomes_list or not has_input)
     )
@@ -664,79 +575,53 @@ with st.sidebar:
 
 def run_analysis_with_retry(selected_genome, locus_tag, sequence, position,
                              pam, pam_map, guide_length, promoter, max_retries=3):
-    """
-    Runs the full submit + analyze pipeline with automatic retry on failure.
-    Returns (final_results, log_text) tuple.
-    """
     last_error = None
-
     for attempt in range(1, max_retries + 1):
         logger.info(f"=== Attempt {attempt} of {max_retries} ===")
         driver = get_driver()
-
         if not driver:
             logger.error("Failed to initialize Chrome driver.")
             last_error = Exception("Failed to initialize Chrome driver.")
-            time.sleep(5 * attempt)  # wait longer each retry
+            time.sleep(5 * attempt)
             continue
-
         try:
-            logger.info(f"Submitting job to CRISPR-PLANT | Genome: {selected_genome} | Input: {locus_tag or sequence or position}")
-
+            logger.info(f"Submitting job | Genome: {selected_genome} | Input: {locus_tag or sequence or position}")
             if "status" in st.session_state:
-                st.session_state.status.update(
-                    label=f"Attempt {attempt}/{max_retries}: Navigating to CRISPR-PLANT..."
-                )
-
+                st.session_state.status.update(label=f"Attempt {attempt}/{max_retries}: Navigating to CRISPR-PLANT...")
             submit_crispr_plant_job(
-                driver=driver,
-                selected_genome=selected_genome,
-                locus_tag=locus_tag,
-                sequence=sequence,
-                position=position,
-                pam=pam,
-                pam_map=pam_map,
-                guide_length=guide_length,
-                promoter=promoter,
+                driver=driver, selected_genome=selected_genome,
+                locus_tag=locus_tag, sequence=sequence, position=position,
+                pam=pam, pam_map=pam_map, guide_length=guide_length, promoter=promoter,
                 status_label=f"Attempt {attempt}/{max_retries}: Submitting job..."
             )
-
             logger.info("Job submitted. Waiting for results table...")
-
             if "status" in st.session_state:
-                st.session_state.status.update(
-                    label=f"Attempt {attempt}/{max_retries}: Waiting for results..."
-                )
-
+                st.session_state.status.update(label=f"Attempt {attempt}/{max_retries}: Waiting for results...")
             final_results = analyze_crispr_results(driver)
             logger.info(f"Success on attempt {attempt}. Got {len(final_results)} gRNAs.")
             return final_results, log_stream.getvalue()
-
         except Exception as e:
             last_error = e
             logger.warning(f"Attempt {attempt} failed: {type(e).__name__}: {str(e)}")
-
             if "status" in st.session_state:
                 st.session_state.status.update(
                     label=f"Attempt {attempt} failed. {'Retrying...' if attempt < max_retries else 'All retries exhausted.'}"
                 )
-
-            wait_time = 10 * attempt  # 10s, 20s, 30s
+            wait_time = 10 * attempt
             logger.info(f"Waiting {wait_time}s before next attempt...")
             time.sleep(wait_time)
-
         finally:
             try:
                 driver.quit()
                 logger.info("Driver closed.")
             except Exception:
                 pass
-
     logger.error(f"All {max_retries} attempts failed. Last error: {last_error}")
     raise Exception(f"Failed after {max_retries} attempts. Last error: {last_error}")
 
+
 # ============================================================
-# --- Main Run: Top 30 with Off-Target Analysis (ORIGINAL) ---
+# --- Main Run ---
 # ============================================================
 if run_button:
     st.session_state.analysis_result = None
@@ -748,30 +633,22 @@ if run_button:
         try:
             input_hint = locus_tag or (sequence[:20] + "..." if sequence else position)
             final_results, log_text = run_analysis_with_retry(
-                selected_genome=selected_genome,
-                locus_tag=locus_tag,
-                sequence=sequence,
-                position=position,
-                pam=pam,
-                pam_map=pam_map,
-                guide_length=guide_length,
-                promoter=promoter,
-                max_retries=3
+                selected_genome=selected_genome, locus_tag=locus_tag, sequence=sequence,
+                position=position, pam=pam, pam_map=pam_map,
+                guide_length=guide_length, promoter=promoter, max_retries=3
             )
             st.session_state.analysis_result = final_results
             st.session_state.last_log = log_text
-            status.update(label="✅ Analysis Complete!", state="complete", expanded=False)
-
+            status.update(label="\u2705 Analysis Complete!", state="complete", expanded=False)
         except Exception as e:
             st.session_state.last_log = log_stream.getvalue()
-            status.update(label="❌ An error occurred!", state="error")
-            st.error(f"⚠️ **Failed after 3 attempts**: {str(e)}")
+            status.update(label="\u274c An error occurred!", state="error")
+            st.error(f"\u26a0\ufe0f **Failed after 3 attempts**: {str(e)}")
             st.warning("The CRISPR-PLANT server may be slow or temporarily unavailable. Please wait a minute and try again.")
-
         finally:
             if "last_log" in st.session_state and st.session_state.last_log:
                 st.download_button(
-                    label="📋 Download Debug Logs",
+                    label="\U0001f4cb Download Debug Logs",
                     data=st.session_state.last_log,
                     file_name="crispr_tool_debug.log",
                     mime="text/plain"
@@ -782,10 +659,10 @@ if run_button:
 # --- Display Results ---
 # ============================================================
 if st.session_state.analysis_result:
-    st.header("📊 Analysis Results")
+    st.header("\U0001f4ca Analysis Results")
 
     results_data = []
-    for grna in st.session_state.analysis_result[:30]:  # Limit to 30 results
+    for grna in st.session_state.analysis_result[:30]:
         critical_genes = []
         for critical in grna['critical_off_targets']:
             if critical['gene'] and critical['gene'] not in critical_genes:
@@ -802,29 +679,24 @@ if st.session_state.analysis_result:
     results_df = pd.DataFrame(results_data)
     results_df.insert(0, 'Rank', range(1, len(results_df) + 1))
 
-    st.write(
-        f"Found and prioritized **{len(results_df)}** high-quality gRNAs based on: "
-        f"on-target score, GC content, genomic region, and off-target analysis."
-    )
-    st.dataframe(results_df, use_container_width=True)
+    st.write(f"Found and prioritized **{len(results_df)}** high-quality gRNAs based on: on-target score, GC content, genomic region, and off-target analysis.")
 
-    # Download button for top-30 table
+    # FIX: use_container_width deprecated -> use width='stretch'
+    st.dataframe(results_df, width='stretch')
+
     csv_top30 = pd.DataFrame(results_data).to_csv(index=False)
     input_label = locus_tag or "results"
     st.download_button(
-        label="📥 Download Top 30 Results as CSV",
+        label="\U0001f4e5 Download Top 30 Results as CSV",
         data=csv_top30,
         file_name=f"grna_top30_{input_label}.csv",
         mime="text/csv"
     )
 
-    # ============================================================
-    # --- Important Recommendation Banner ---
-    # ============================================================
     st.markdown("---")
     st.markdown(
         "<div style='margin-bottom: 24px; padding: 16px; background-color: #f9f9f9; color: #222; border-radius: 8px; border: 1px solid #e0e0e0;'>"
-        "<b>📋 Important Recommendation:</b><br>"
+        "<b>\U0001f4cb Important Recommendation:</b><br>"
         "This table contains high-quality gRNAs ranked by their on-target efficiency and specificity scores.<br>"
         "We <b>strongly recommend analyzing every critical off-target gene in detail</b> through genome database searches and literature review before final gRNA selection. "
         "Consider the biological importance of each critical gene and its potential impact on your experimental goals. "
@@ -835,9 +707,9 @@ if st.session_state.analysis_result:
     # ============================================================
     # --- AI Assistant ---
     # ============================================================
-    st.header("🤖 AI Assistant - Ask Questions About Your Results")
+    st.header("\U0001f916 AI Assistant - Ask Questions About Your Results")
 
-    all_grnas_ai = st.session_state.analysis_result[:30]  # Limit to 30 results
+    all_grnas_ai = st.session_state.analysis_result[:30]
     grna_details = []
     for grna in all_grnas_ai:
         critical_genes = [c['gene'] for c in grna['critical_off_targets'] if c['gene']]
@@ -856,20 +728,31 @@ Analysis Context:
 All gRNA Candidates:
 {chr(10).join(grna_details)}
 
-All gRNAs shown are categorized by lowest critical off-target count, then off-target count, then genomic region priority, and finally on-target score. However, this ranking is only for organization purposes. The best gRNA for your specific experiment may be any of these candidates depending on your research goals and the biological significance of the off-target genes involved.
+All gRNAs shown are categorized by lowest critical off-target count, then off-target count, then genomic region priority, and finally on-target score.
 """
 
-    st.info("💡 Ask me about your gRNA results, off-target effects, or CRISPR design strategies!")
+    st.info("\U0001f4a1 Ask me about your gRNA results, off-target effects, or CRISPR design strategies!")
 
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
+
+    # FIX: gracefully handle missing GEMINI_API_KEY (works on server without secrets.toml)
     if 'gemini_client' not in st.session_state:
-        gemini_api_key = st.secrets["GEMINI_API_KEY"]
+        gemini_api_key = None
         try:
-            st.session_state.gemini_client = genai.Client(api_key=gemini_api_key)
-        except Exception as e:
-            st.error("⚠️ Unable to initialize AI assistant. Please try again.")
+            gemini_api_key = st.secrets["GEMINI_API_KEY"]
+        except Exception:
+            pass  # Key not found — AI assistant will be disabled
+
+        if gemini_api_key:
+            try:
+                st.session_state.gemini_client = genai.Client(api_key=gemini_api_key)
+            except Exception as e:
+                st.warning(f"\u26a0\ufe0f Could not initialize AI assistant: {e}")
+                st.session_state.gemini_client = None
+        else:
             st.session_state.gemini_client = None
+            st.warning("\u26a0\ufe0f AI Assistant is unavailable: GEMINI_API_KEY not configured on this server.")
 
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
@@ -879,13 +762,13 @@ All gRNAs shown are categorized by lowest critical off-target count, then off-ta
         st.write("**Quick Questions:**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            if st.button("📊 How should I choose my best gRNA?"):
+            if st.button("\U0001f4ca How should I choose my best gRNA?"):
                 st.session_state.quick_question = "Based on the analysis results, what factors should I consider when choosing between these gRNA candidates? Please explain the key differences and help me understand the trade-offs between targeting efficiency, specificity, and off-target risks."
         with col2:
-            if st.button("✅ What makes a good gRNA?"):
+            if st.button("\u2705 What makes a good gRNA?"):
                 st.session_state.quick_question = "What makes a good gRNA for CRISPR experiments?"
         with col3:
-            if st.button("🔬 How to validate experimentally?"):
+            if st.button("\U0001f52c How to validate experimentally?"):
                 st.session_state.quick_question = "How do I validate these gRNAs experimentally in the lab?"
 
         if prompt := st.chat_input("Ask about your gRNA results..."):
@@ -906,14 +789,12 @@ All gRNAs shown are categorized by lowest critical off-target count, then off-ta
 The user has just completed a gRNA analysis. Here are their results:
 {analysis_summary}
 
-IMPORTANT GUIDANCE FOR YOU:
-1. Do NOT be biased toward any particular gRNA in the list - any of the candidates could be the best choice depending on the user's specific experimental goals
-2. Emphasize the critical importance of literature review - repeatedly remind users that thorough literature review of each gRNA candidate is VERY CRUCIAL before final selection
-3. Clarify ranking context - explain that these rankings are primarily for organizational purposes and easy design workflows, NOT definitive indicators of the "best" gRNA
-4. Consider user-specific factors - encourage users to analyze which critical genes matter most for their research and whether off-targeting them is acceptable
-5. Use research paper information to inform your answers - if the user asks about specific genes or off-target effects, use the research paper explorer data to provide insights on the biological significance of those genes and potential consequences of off-targeting them. Also refer to those papers when discussing validation strategies or design trade-offs.
-
-Be specific to their data. Be concise (2-3 paragraphs). Be scientifically accurate. Always emphasize the importance of literature review."""
+IMPORTANT GUIDANCE:
+1. Do NOT be biased toward any particular gRNA - any candidate could be best depending on the user's goals
+2. Emphasize thorough literature review before final gRNA selection
+3. Rankings are for organization, NOT definitive indicators of the best gRNA
+4. Encourage users to evaluate which critical genes matter for their research
+Be concise (2-3 paragraphs). Be scientifically accurate."""
 
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
@@ -922,12 +803,12 @@ Be specific to their data. Be concise (2-3 paragraphs). Be scientifically accura
                     with st.spinner("Please wait..."):
                         response = st.session_state.gemini_client.models.generate_content(
                             model="gemini-2.5-flash",
-                            contents=f"{system_prompt}\n\nQuestion: {user_messsage}"
+                            contents=f"{system_prompt}\n\nQuestion: {user_message}"
                         )
                         full_response = response.text
                         message_placeholder.markdown(full_response)
                 except Exception as e:
-                    error_msg = "❌ Please try again."
+                    error_msg = "\u274c Please try again."
                     message_placeholder.markdown(error_msg)
                     full_response = error_msg
 
@@ -938,62 +819,67 @@ Be specific to their data. Be concise (2-3 paragraphs). Be scientifically accura
     # --- Research Paper Explorer ---
     # ============================================================
     st.markdown("---")
-    st.header("📚 Research Paper Explorer")
+    st.header("\U0001f4da Research Paper Explorer")
     st.write("Search for research papers related to your gene, CRISPR techniques, or specific topics.")
 
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("Papers about CRISPR off-targets"):
-            papers = search_openalex("CRISPR off-target effects")
+            with st.spinner("Searching..."):
+                papers = search_openalex("CRISPR off-target effects")
             if papers:
                 st.subheader("Recent papers on CRISPR off-targets:")
                 for paper in papers:
                     formatted = format_paper_result(paper)
-                    with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
+                    with st.expander(f"\U0001f4c4 {formatted['title']} ({formatted['year']})"):
                         display_paper_details(formatted)
 
     with col2:
         gene_label = locus_tag
         if gene_label:
             if st.button(f"Papers about {gene_label}"):
-                papers = search_openalex(gene_label)
+                with st.spinner("Searching..."):
+                    papers = search_openalex(gene_label)
                 if papers:
                     st.subheader(f"Papers related to {gene_label}:")
                     for paper in papers:
                         formatted = format_paper_result(paper)
-                        with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
+                        with st.expander(f"\U0001f4c4 {formatted['title']} ({formatted['year']})"):
                             display_paper_details(formatted)
+                else:
+                    st.info("No papers found for this gene.")
 
     with col3:
         if st.button("Papers on gRNA design"):
-            papers = search_openalex("guide RNA design optimization")
+            with st.spinner("Searching..."):
+                papers = search_openalex("guide RNA design optimization")
             if papers:
                 st.subheader("Papers on gRNA design:")
                 for paper in papers:
                     formatted = format_paper_result(paper)
-                    with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
+                    with st.expander(f"\U0001f4c4 {formatted['title']} ({formatted['year']})"):
                         display_paper_details(formatted)
 
     st.markdown("### Custom Literature Search")
     custom_query = st.text_input("Enter your search query:", placeholder="e.g., CRISPR Cas9 plant genome editing")
-    if st.button("🔍 Search"):
+    if st.button("\U0001f50d Search"):
         if custom_query:
             with st.spinner("Searching database..."):
                 papers = search_openalex(custom_query, per_page=10)
-                if papers:
-                    st.success(f"Found {len(papers)} papers")
-                    for paper in papers:
-                        formatted = format_paper_result(paper)
-                        with st.expander(f"📄 {formatted['title']} ({formatted['year']})"):
-                            display_paper_details(formatted)
-                else:
-                    st.info("No papers found. Try a different query.")
+            if papers:
+                st.success(f"Found {len(papers)} papers")
+                for paper in papers:
+                    formatted = format_paper_result(paper)
+                    with st.expander(f"\U0001f4c4 {formatted['title']} ({formatted['year']})"):
+                        display_paper_details(formatted)
+            else:
+                st.info("No papers found. Try a different query.")
 
     # ============================================================
     # --- Critical Off-Target Genes Research ---
     # ============================================================
     st.markdown("---")
-    st.header("🧬 Critical Off-Target Genes Research")
+    st.header("\U0001f9ec Critical Off-Target Genes Research")
     st.write("Explore research papers for each gene identified in your critical off-target analysis.")
 
     all_critical_genes = []
@@ -1007,14 +893,14 @@ Be specific to their data. Be concise (2-3 paragraphs). Be scientifically accura
     if all_critical_genes:
         st.info(f"Found {len(all_critical_genes)} unique critical genes across all gRNAs")
         for gene in all_critical_genes:
-            with st.expander(f"🔍 Papers for gene: **{gene}**", expanded=False):
-                st.write(f"Searching for papers related to {gene}...")
-                papers = search_openalex(gene, per_page=5)
+            with st.expander(f"\U0001f50d Papers for gene: **{gene}**", expanded=False):
+                with st.spinner(f"Searching for {gene}..."):
+                    papers = search_openalex(gene, per_page=5)
                 if papers:
                     st.success(f"Found {len(papers)} papers for {gene}")
                     for idx, paper in enumerate(papers, 1):
                         formatted = format_paper_result(paper)
-                        with st.expander(f"📄 {idx}. {formatted['title']} ({formatted['year']})"):
+                        with st.expander(f"\U0001f4c4 {idx}. {formatted['title']} ({formatted['year']})"):
                             display_paper_details(formatted)
                 else:
                     st.info(f"No papers found for {gene} in OpenAlex database. Try searching for related terms.")
