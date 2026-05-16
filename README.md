@@ -2,7 +2,7 @@
 
 Automated gRNA selection for plant genome editing with safety-first ranking and AI-powered decision support.
 
-**[▶ Try the Live App](https://grnadesigntool-e37juk7acebldetm2euz28.streamlit.app/)**
+**[▶ Try the Live App](https://bioinfo.icgeb.res.in/sharp)**
 
 ---
 
