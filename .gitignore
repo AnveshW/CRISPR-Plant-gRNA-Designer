@@ -1,0 +1,27 @@
+# Python cache and temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Local configuration and private keys (CRITICAL)
+secrets.toml
+.streamlit/secrets.toml
+.env
+.env.*
+
+# Logs
+*.log
+uvicorn.log
+
+# OS generated files
+.DS_Store
+Thumbs.db

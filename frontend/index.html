@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRISPR Plant gRNA designer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ── Header Section ── -->
+        <header>
+            <div class="logo-section">
+                <h1 class="dashboard-title">CRISPR Plant gRNA designer</h1>
+            </div>
+            <div class="header-right" style="display: flex; align-items: center; gap: 16px;">
+                <button id="theme-toggle" class="theme-btn">THEME: DARK</button>
+                <div class="server-status">
+                    <div class="status-dot"></div>
+                    <span id="server-status-text">Connecting to server...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ── Main Grid Layout ── -->
+        <div class="main-layout">
+            
+            <!-- ── Sidebar Control Panel ── -->
+            <aside class="panel sidebar-panel">
+                <div class="panel-title">
+                    Control Dashboard
+                </div>
+
+                <!-- Input Type Tabs -->
+                <div class="form-group">
+                    <label>Select Input Type</label>
+                    <div class="input-tabs">
+                        <button class="tab-btn active" data-tab="locus-tab">Locus Tag</button>
+                        <button class="tab-btn" data-tab="seq-tab">DNA Sequence</button>
+                        <button class="tab-btn" data-tab="pos-tab">Genomic Position</button>
+                    </div>
+                </div>
+
+                <!-- Inputs Fields -->
+                <form id="design-form">
+                    <div id="locus-tab" class="input-field-group">
+                        <div class="form-group">
+                            <label for="input-locus">Locus Tag</label>
+                            <input type="text" id="input-locus" class="form-input" value="GLYMA14G07880" placeholder="e.g. AT2G43010, GLYMA14G07880">
+                        </div>
+                    </div>
+
+                    <div id="seq-tab" class="input-field-group" style="display: none;">
+                        <div class="form-group">
+                            <label for="input-seq">DNA Sequence (A, T, C, G only)</label>
+                            <textarea id="input-seq" class="form-textarea" placeholder="Paste raw DNA nucleotide sequence..."></textarea>
+                        </div>
+                    </div>
+
+                    <div id="pos-tab" class="input-field-group" style="display: none;">
+                        <div class="form-group">
+                            <label for="input-pos">Genomic Position</label>
+                            <input type="text" id="input-pos" class="form-input" placeholder="e.g. Chr1:12345-12500">
+                        </div>
+                    </div>
+
+                    <!-- Core PAM Selector -->
+                    <div class="form-group">
+                        <label for="input-pam">PAM Sequence Constraint</label>
+                        <select id="input-pam" class="form-select">
+                            <option value="NGG (SpCas9)" selected>NGG (SpCas9)</option>
+                            <option value="NAG (SpCas9)">NAG (SpCas9)</option>
+                            <option value="NGA (SpCas9)">NGA (SpCas9)</option>
+                            <option value="NNGRRT (SaCas9)">NNGRRT (SaCas9)</option>
+                            <option value="NNNRRT (SaCas9-KKH)">NNNRRT (SaCas9-KKH)</option>
+                            <option value="TTTN (Cpf1)">TTTN (Cpf1)</option>
+                            <option value="TTN (Cas12a)">TTN (Cas12a)</option>
+                            <option value="NG (SpCas9-NG)">NG (SpCas9-NG)</option>
+                            <option value="NGA (SpCas9-VQR)">NGA (SpCas9-VQR)</option>
+                            <option value="NGCG (SpCas9-VRER)">NGCG (SpCas9-VRER)</option>
+                            <option value="TTTN (AsCpf1)">TTTN (AsCpf1)</option>
+                            <option value="TTTN (LbCpf1)">TTTN (LbCpf1)</option>
+                        </select>
+                    </div>
+
+                    <!-- Guide length -->
+                    <div class="form-group">
+                        <label for="input-guide-length">Spacer Length</label>
+                        <select id="input-guide-length" class="form-select">
+                            <option value="15 bp">15 bp</option>
+                            <option value="16 bp">16 bp</option>
+                            <option value="17 bp">17 bp</option>
+                            <option value="18 bp">18 bp</option>
+                            <option value="19 bp">19 bp</option>
+                            <option value="20 bp" selected>20 bp</option>
+                            <option value="21 bp">21 bp</option>
+                            <option value="22 bp">22 bp</option>
+                        </select>
+                    </div>
+
+                    <!-- snoRNA Promoter selection -->
+                    <div class="form-group">
+                        <label>Plant snoRNA Promoter</label>
+                        <div class="promoter-group">
+                            <div class="radio-card">
+                                <input type="radio" id="promo-u3" name="promoter" value="U3 (default)" checked>
+                                <label for="promo-u3">U3 (default)</label>
+                            </div>
+                            <div class="radio-card">
+                                <input type="radio" id="promo-u6" name="promoter" value="U6">
+                                <label for="promo-u6">U6</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Genome Loader Button -->
+                    <div class="form-group" style="margin-top: 24px;">
+                        <button type="button" id="fetch-genomes-btn" class="btn btn-secondary">
+                            Fetch Genome Databases
+                        </button>
+                    </div>
+
+                    <!-- Genome Selection dropdown -->
+                    <div class="form-group" id="genome-select-group" style="display: none;">
+                        <label for="input-genome">Target Plant Genome</label>
+                        <select id="input-genome" class="form-select"></select>
+                    </div>
+
+                    <!-- Run Button -->
+                    <div class="form-group" style="margin-top: 30px;">
+                        <button type="submit" id="run-btn" class="btn" disabled>
+                            Design & Analyze gRNAs
+                        </button>
+                    </div>
+                </form>
+            </aside>
+
+            <!-- ── Main Central Stage ── -->
+            <main class="content-wrapper">
+                
+                <!-- View 1: Welcome State -->
+                <section id="welcome-view" class="view-section active">
+                    <div class="panel welcome-card">
+                        <h2>CRISPR Plant gRNA designer</h2>
+                        <p>Welcome! This application facilitates rigorous multivariable comparison, filtration, and triage of guide RNA spacer candidates for CRISPR genome editing in plant species. Input a Locus Tag or paste target DNA to evaluate candidate viability.</p>
+                        
+                        <div class="feature-highlights">
+                            <div class="highlight-box">
+                                <h3>CRISPR-PLANT DB</h3>
+                                <p>Direct live integration with the HZAU Plant Genome databases for high accuracy.</p>
+                            </div>
+                            <div class="highlight-box">
+                                <h3>Off-Target Auditing</h3>
+                                <p>Deep-dive off-target profiling automatically filtering potential exons or CDS hazards.</p>
+                            </div>
+                            <div class="highlight-box">
+                                <h3>Literature Integration</h3>
+                                <p>Direct link with OpenAlex API for instant scientific publication verification.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- View 2: Loading State with Live Logs -->
+                <section id="loading-view" class="view-section">
+                    <div class="panel stepper-container">
+                        <!-- CSS 3D Double Helix Loader -->
+                        <div class="helix-loader">
+                            <div class="strand">
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                                <div class="node"></div>
+                                <div class="node node-b"></div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center;">
+                            <h3 style="font-family: 'Outfit', sans-serif; font-size: 18px; margin-bottom: 8px;">Designing Guide RNAs...</h3>
+                            <p style="color: var(--text-muted); font-size: 14px;">The CRISPR-PLANT server is running the selection algorithm.</p>
+                        </div>
+
+                        <!-- Monospace Logger Console -->
+                        <div id="live-logger" class="logger-panel">
+                            <div class="logger-row">
+                                <span class="logger-time">[00:00:00]</span>
+                                <span class="logger-text">Spawning pipeline engine...</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- View 3: Results Dashboard -->
+                <section id="results-view" class="view-section">
+                    
+                    <!-- Title Actions Header -->
+                    <div class="results-header-actions" style="display: none;">
+                        <div class="result-badge">
+                            Optimal Candidates Found: <span id="results-count">0</span>
+                        </div>
+                    </div>
+
+                    <!-- CRISPR Guide Candidate Evaluation Summary Strip -->
+                    <div class="panel metrics-strip-container" style="display: none; margin-bottom:16px;">
+                        <div class="panel-title" style="margin-bottom: 12px; border:none; padding:0; font-size:11px; display:flex; gap: 8px; align-items:center;">
+                            Summary Metrics (Current Filtered Cohort)
+                        </div>
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <span class="metric-label">Total Candidates</span>
+                                <span class="metric-val" id="stat-total">0</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-label">Mean GC%</span>
+                                <span class="metric-val" id="stat-avg-gc">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- star shortlist comparison panel -->
+                    <div class="panel shortlist-comparison-box" id="shortlist-box" style="display:none; margin-bottom: 16px;">
+                        <div class="panel-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom:1px solid var(--border-neutral); padding-bottom:8px;">
+                            <span>Starred Candidates Shortlist & Comparison</span>
+                            <button id="clear-shortlist-btn" class="quick-q-btn" style="padding: 2px 8px; font-size:9px;">Clear All</button>
+                        </div>
+                        <div class="shortlist-table-container" style="overflow-x:auto;">
+                            <table class="grna-table" style="font-size:11.5px;">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Spacer (5' → 3')</th>
+                                        <th>PAM</th>
+                                        <th>GC%</th>
+                                        <th class="col-offtarget">Off-Target Risk</th>
+                                        <th>Genomic Annotation</th>
+                                        <th>Recommendation Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shortlist-table-body">
+                                    <!-- Stars populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Scientific Decision-Support Filters -->
+                    <div class="filters-panel" style="display: none;">
+                        <div class="panel-title" style="margin-bottom: 8px; border:none; padding:0; font-size:11px;">
+                            Scientific Selection Filters
+                        </div>
+                        <div class="filters-container">
+                            <div class="filters-row filters-row-1">
+                                <!-- Strand Selector -->
+                                <div class="form-group" style="margin:0;">
+                                    <label for="filter-strand">Target Strand</label>
+                                    <select id="filter-strand" class="form-select">
+                                        <option value="all">All Strands (+/-)</option>
+                                        <option value="plus">Sense (+) Strand</option>
+                                        <option value="minus">Antisense (-) Strand</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- GC Range -->
+                                <div class="form-group" style="margin:0;">
+                                    <label for="filter-gc">GC Content Range</label>
+                                    <select id="filter-gc" class="form-select">
+                                        <option value="all">All GC% Ranges</option>
+                                        <option value="optimal">Optimal (40% - 60%)</option>
+                                        <option value="high">High (>60%)</option>
+                                        <option value="low">Low (<40%)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="filters-row filters-row-2" style="margin-top:12px;">
+                                <!-- Min Efficiency Score -->
+                                <div class="form-group" style="margin:0;">
+                                    <label for="filter-efficiency">Min Efficiency Score</label>
+                                    <select id="filter-efficiency" class="form-select">
+                                        <option value="0.0">No Threshold (>= 0.00)</option>
+                                        <option value="0.3">Moderate (>= 0.30)</option>
+                                        <option value="0.5">High (>= 0.50)</option>
+                                        <option value="0.7">Exceptional (>= 0.70)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Off-target Risk tier -->
+                                <div class="form-group" style="margin:0;">
+                                    <label for="filter-risk">Max Off-Target Risk</label>
+                                    <select id="filter-risk" class="form-select">
+                                        <option value="all">All Risk Tiers</option>
+                                        <option value="low">Low Risk (0 Critical)</option>
+                                        <option value="med">Medium Risk (<= 3 Critical)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Genomic Annotation type -->
+                                <div class="form-group" style="margin:0;">
+                                    <label for="filter-region">Genomic Annotation</label>
+                                    <select id="filter-region" class="form-select">
+                                        <option value="all">All Annotations</option>
+                                        <option value="exon">Exon / CDS Targets</option>
+                                        <option value="utr">UTR Targets</option>
+                                        <option value="intron">Intron Targets</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Grid Table -->
+                    <div class="grid-container">
+                        <table class="grna-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Spacer Sequence (5' → 3')</th>
+                                    <th>PAM</th>
+                                    <th>GC Content</th>
+                                    <th class="col-offtarget">Off-Target Risk</th>
+                                    <th>Genomic Annotation</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="grna-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Literature Explorer (Expanded Full-Width) -->
+                    <div style="margin-bottom: 24px;">
+                        
+                        <!-- OpenAlex Literature Explorer -->
+                        <div class="panel lit-section" style="margin: 0; padding: 20px; display: flex; flex-direction: column;">
+                            <div class="panel-title" style="margin-bottom: 12px; border:none; padding:0;">
+                                Literature Explorer
+                            </div>
+                            
+                            <!-- Search Form -->
+                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                                <input type="text" id="lit-search-input" class="form-input" style="padding: 8px 12px; font-size: 13px;" placeholder="Search papers: e.g., Cas9 off-target mutations plant">
+                                <button id="lit-search-btn" class="btn" style="width: auto; padding: 8px 16px; font-size: 13px;">Search</button>
+                            </div>
+
+                            <!-- Presets -->
+                            <div class="preset-buttons">
+                                <button class="quick-q-btn" id="preset-offtarget">CRISPR Off-targets</button>
+                                <button class="quick-q-btn" id="preset-design">gRNA Optimization</button>
+                                <button class="quick-q-btn" id="preset-gene" style="display:none;"></button>
+                            </div>
+
+                            <!-- Papers Box -->
+                            <div id="papers-list-container" style="flex:1; overflow-y:auto; max-height:280px; display:flex; flex-direction:column; gap:12px; padding-right:4px;">
+                                <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 13px;">
+                                    Click search or a preset button above to load scientific papers directly from the OpenAlex open-access publication database.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Critical Off-Target Genes Research Explorer -->
+                    <div class="panel critical-genes-box">
+                        <div class="panel-title" style="margin-bottom: 12px; border:none; padding:0;">
+                            Critical Off-Target Genes Deep-Dive
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                            Below are the specific genes that are high risk of being targeted unintentionally by your top gRNAs. Click on a gene to instantly fetch related research papers from the open literature to examine its biological importance.
+                        </p>
+                        <div id="critical-genes-accordion">
+                            <!-- Accordion items loaded dynamically -->
+                            <div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 13px;">
+                                No critical off-targets identified across candidate guides.
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Candidate Detail Drawer Overlay -->
+    <div class="candidate-drawer" id="candidate-detail-drawer">
+        <div class="drawer-header">
+            <span class="drawer-title">Candidate Profile Details</span>
+            <button class="drawer-close-btn" id="drawer-close-btn">✕</button>
+        </div>
+        <div class="drawer-body" id="drawer-body-content">
+            <!-- Loaded dynamically -->
+        </div>
+    </div>
+
+    <!-- Floating Chat Button Trigger -->
+    <button id="floating-chat-trigger" class="floating-chat-btn" style="display: none;">
+        ASK ASSISTANT
+    </button>
+
+    <!-- Floating Chat Assistant Overlay Panel -->
+    <div class="chat-container floating-chat-panel hidden" id="floating-chat-panel">
+        <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Ask questions to AI assistant</h3>
+            <button id="close-chat-btn" class="chat-close-btn">✕</button>
+        </div>
+
+        <div id="chat-box-messages" class="chat-messages">
+            <div class="chat-bubble assistant">
+                Hello! I've analyzed your candidate CRISPR guide RNAs. Ask me about efficiency rankings, potential off-target risks, GC content distribution, or experimental lab validation protocols!
+            </div>
+        </div>
+        <div class="quick-q-bar">
+            <button class="quick-q-btn" data-q="Based on the analysis, how should I select my best gRNA candidate?">Selection Tradeoffs</button>
+            <button class="quick-q-btn" data-q="What chemical or sequence attributes make a high efficiency gRNA?">Design Attributes</button>
+            <button class="quick-q-btn" data-q="What laboratory assays should I run to validate these guides experimentally?">Lab Assays</button>
+        </div>
+        <div class="chat-input-bar">
+            <input type="text" id="chat-user-input" class="form-input" style="padding: 8px 12px; font-size: 13px;" placeholder="Ask about CRISPR results...">
+            <button id="chat-send-btn" class="btn" style="width: auto; padding: 8px 16px;">Send</button>
+        </div>
+    </div>
+
+    <!-- Main JavaScript Controller -->
+    <script src="app.js"></script>
+</body>
+</html>
