@@ -223,23 +223,39 @@ async def chat_assistant(req: ChatRequest):
         from google import genai
         client = genai.Client(api_key=api_key)
         
-        # Build prompt history
-        system_prompt = f"""You are an expert CRISPR/Cas9 gRNA design assistant with deep knowledge of plant biotechnology and genome editing.
+        # Detect if the last user message is a casual/non-technical query
+        last_user_msg = next(
+            (m.content for m in reversed(req.messages) if m.role == "user"), ""
+        )
+        
+        CASUAL_PHRASES = {"hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "bye", "good morning", "good afternoon"}
+        is_casual = last_user_msg.strip().lower().rstrip("!.") in CASUAL_PHRASES
+
+        if is_casual:
+            # Lightweight system prompt for conversational messages
+            system_prompt = (
+                "You are a helpful CRISPR/Cas9 gRNA design assistant. "
+                "Respond naturally, politely, and briefly (1 sentence) to casual greetings or pleasantries."
+            )
+        else:
+            # Full scientific system prompt with gRNA context
+            system_prompt = f"""You are an expert CRISPR/Cas9 gRNA design assistant with deep knowledge of plant biotechnology and genome editing.
         
 You are analyzing a set of designed plant guide RNAs. Here is the context of their analysis:
 {req.summary}
+
+RESPONSE STYLE & BEHAVIOR:
+1. For casual conversational comments, respond briefly and naturally (1 sentence).
+2. Only provide detailed, rigorous scientific analysis when responding to a specific query about gRNA candidates, off-target risks, or design parameters.
 
 IMPORTANT GUIDANCE:
 1. Do NOT be biased toward any particular gRNA - any candidate could be best depending on the user's experimental goals.
 2. Emphasize thorough literature review before final gRNA selection.
 3. Rankings in the grid are for logical organization based on general criteria, NOT definitive indicators of the absolute best gRNA.
 4. Encourage users to evaluate which critical off-target genes are important for their research.
-Be concise (2-3 paragraphs maximum). Keep it highly scientific, precise, and practical."""
+Be concise (2-3 paragraphs maximum for scientific answers). Keep it highly scientific, precise, and practical."""
 
         # Format history for Gemini SDK
-        # Combine messages
-        # Standard format for genai.Client is: client.models.generate_content
-        # Let's combine system prompt with conversation history.
         conversation = [f"System Instructions:\n{system_prompt}"]
         for msg in req.messages:
             role_label = "User" if msg.role == "user" else "Assistant"
