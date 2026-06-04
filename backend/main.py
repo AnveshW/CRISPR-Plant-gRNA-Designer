@@ -16,9 +16,13 @@ from backend.scraper import CRISPRScraper
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("crispr_backend")
 
+# root_path="/sharp" tells FastAPI/uvicorn that the app is served under /sharp
+# The reverse proxy strips /sharp before forwarding — if it does NOT strip it,
+# pass --root-path /sharp to uvicorn instead and remove it here.
 app = FastAPI(
     title="CRISPR Plant gRNA Designer API",
-    description="Backend API services for modern plant genome CRISPR analysis"
+    description="Backend API services for modern plant genome CRISPR analysis",
+    root_path="/sharp"
 )
 
 # CORS middleware for local development
@@ -275,9 +279,9 @@ Be concise (2-3 paragraphs maximum for scientific answers). Keep it highly scien
         logger.error(f"Gemini API failure: {e}")
         raise HTTPException(status_code=500, detail=f"Gemini API Error: {str(e)}")
 
-# Mount Static Files (this serves our single-page application under the root '/')
-# Note: In production, the built static files should be in frontend/
-# Let's mount static files at the end so it doesn't mask API routes
+# Mount static frontend at "/" — root_path="/sharp" on the FastAPI app
+# already tells the framework the app lives under /sharp.
+# Do NOT mount at "/sharp" here — that would create a double-prefix /sharp/sharp.
 frontend_path = os.path.abspath("frontend")
 if os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")

@@ -23,11 +23,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 6. Copy all your app files
 COPY . .
 
-# 7. Expose the Streamlit port
+# 7. Expose the FastAPI port
 EXPOSE 8501
 
-# 8. Run the app
-CMD ["streamlit", "run", "Solvethisfast.py", \
-     "--server.port=8501", \
-     "--server.address=0.0.0.0", \
-     "--server.headless=true"]
+# 8. Run the FastAPI app via uvicorn
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8501"]
