@@ -6,11 +6,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
-    /* Deep warm charcoal for dark mode by default */
-    --bg-base: #1a1917;
-    --bg-panel: #232220;
-    --bg-control: #2b2a27;
-    --border-neutral: #3a3835;
+    /* Warm off-white base for light mode by default */
+    --bg-base: #f5f3ef;
+    --bg-panel: #eae8e2;
+    --bg-control: #dedcd5;
+    --border-neutral: #cbc8bf;
     --border-focus: #4a7c59; /* Sage accent */
     
     /* Understated scientific indicators */
@@ -21,36 +21,18 @@
     --pam-color: #b5621a;    /* Amber for PAM sequence */
     --cut-site-color: #8c887e;
     
-    --text-main: #f5f3ef;    /* Warm off-white */
-    --text-muted: #a09d95;
-    --text-inactive: #605e5a;
+    --text-main: #1a1917;    /* Deep warm charcoal */
+    --text-muted: #5c5954;
+    --text-inactive: #8c887e;
     
     --primary: #4a7c59;      /* Sage green accent */
     --primary-bg: rgba(74, 124, 89, 0.08);
     --border-active: #4a7c59;
     
-    --exon-badge-bg: rgba(74, 124, 89, 0.15);
-    --exon-badge-text: #4a7c59;
-    
-    --transition-fast: all 0.15s ease-out;
-}
-
-body.light-theme {
-    /* Warm off-white base for light mode */
-    --bg-base: #f5f3ef;
-    --bg-panel: #eae8e2;
-    --bg-control: #dedcd5;
-    --border-neutral: #cbc8bf;
-    --border-focus: #4a7c59; /* Sage accent */
-    
-    --text-main: #1a1917;    /* Deep warm charcoal */
-    --text-muted: #5c5954;
-    --text-inactive: #8c887e;
-    
     --exon-badge-bg: rgba(74, 124, 89, 0.12);
     --exon-badge-text: #4a7c59;
     
-    --primary-bg: rgba(74, 124, 89, 0.08);
+    --transition-fast: all 0.15s ease-out;
 }
 
 /* ── Base Reset & Typography ── */
@@ -1121,8 +1103,8 @@ header {
 .node:nth-child(18) { transform: translate3d(60px, 15px, 0px); }
 
 @keyframes rotateHelix {
-    0% { transform: rotateY(0deg); }
-    100% { transform: rotateY(360deg); }
+    0% { transform: rotateX(0deg); }
+    100% { transform: rotateX(360deg); }
 }
 
 /* ── Honesty Warnings & Badges ── */

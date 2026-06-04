@@ -7,17 +7,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2.0">
 </head>
 <body>
     <div class="app-container">
         <!-- ── Header Section ── -->
         <header>
-            <div class="logo-section">
-                <h1 class="dashboard-title">CRISPR Plant gRNA designer</h1>
+            <div class="logo-section" style="display: flex; align-items: center; gap: 16px;">
+                <img src="logo_horizontal.png" alt="ICGEB Logo" style="height: 38px; width: auto; mix-blend-mode: multiply;">
+                <h1 class="dashboard-title" style="border-left: 1px solid var(--border-neutral); padding-left: 16px; margin: 0; line-height: 38px;">CRISPR Plant gRNA designer</h1>
             </div>
             <div class="header-right" style="display: flex; align-items: center; gap: 16px;">
-                <button id="theme-toggle" class="theme-btn">THEME: DARK</button>
                 <div class="server-status">
                     <div class="status-dot"></div>
                     <span id="server-status-text">Connecting to server...</span>
@@ -136,6 +136,9 @@
                         </button>
                     </div>
                 </form>
+                <div class="sidebar-logo-container" style="margin-top: 36px; text-align: center; border-top: 1px solid var(--border-neutral); padding-top: 20px;">
+                    <img src="logo_vertical.png" alt="ICGEB Vertical Logo" style="max-width: 110px; height: auto; mix-blend-mode: multiply; opacity: 0.85;">
+                </div>
             </aside>
 
             <!-- ── Main Central Stage ── -->
@@ -438,6 +441,6 @@
     </div>
 
     <!-- Main JavaScript Controller -->
-    <script src="app.js"></script>
+    <script src="app.js?v=2.0"></script>
 </body>
 </html>

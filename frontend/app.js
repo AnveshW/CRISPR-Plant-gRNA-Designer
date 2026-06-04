@@ -198,25 +198,6 @@ function initApp() {
     // Star Shortlist & Drawer Bindings
     elements.clearShortlistBtn.addEventListener('click', clearAllShortlist);
     elements.drawerCloseBtn.addEventListener('click', closeDetailDrawer);
-    
-    // Theme toggle button setup
-    const themeToggleBtn = document.getElementById('theme-toggle');
-    if (themeToggleBtn) {
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        if (savedTheme === 'light') {
-            document.body.classList.add('light-theme');
-            themeToggleBtn.textContent = 'THEME: LIGHT';
-        } else {
-            document.body.classList.remove('light-theme');
-            themeToggleBtn.textContent = 'THEME: DARK';
-        }
-        
-        themeToggleBtn.addEventListener('click', () => {
-            const isLight = document.body.classList.toggle('light-theme');
-            localStorage.setItem('theme', isLight ? 'light' : 'dark');
-            themeToggleBtn.textContent = isLight ? 'THEME: LIGHT' : 'THEME: DARK';
-        });
-    }
 
     // Close drawer on ESC key
     document.addEventListener('keydown', (e) => {
