@@ -1042,7 +1042,7 @@ async function fetchGeneLiterature(gene, gridEl, loaderEl) {
             const card = document.createElement('div');
             card.className = 'paper-card';
             card.style.padding = '12px';
-            card.style.background = 'rgba(255,255,255,0.01)';
+            card.style.background = 'rgba(255, 255, 255, 0.45)';
             
             const oa = paper.open_access ? '<span class="paper-badge">Open Access</span>' : '';
             
@@ -1051,7 +1051,7 @@ async function fetchGeneLiterature(gene, gridEl, loaderEl) {
                 <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">
                     By ${paper.authors} (${paper.year}) | Citations: ${paper.citations} ${oa}
                 </div>
-                <div style="font-size:11.5px; line-height:1.4; color:#cbd5e1; margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                <div style="font-size:11.5px; line-height:1.4; color:var(--text-muted); margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
                     ${paper.abstract || 'No abstract preview available. View DOI link.'}
                 </div>
                 <a href="${paper.url}" target="_blank" class="paper-doi-link">View DOI Portal</a>

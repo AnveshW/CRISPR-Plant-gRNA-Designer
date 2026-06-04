@@ -958,7 +958,7 @@ header {
 }
 
 .paper-card {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.45);
     border: 1px solid var(--border-neutral);
     border-radius: 3px;
     padding: 12px;
