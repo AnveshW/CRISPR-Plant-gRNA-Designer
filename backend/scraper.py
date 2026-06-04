@@ -5,6 +5,7 @@ import tempfile
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
@@ -32,7 +33,7 @@ class CRISPRScraper:
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-blink-features=AutomationControlled")
-            
+
             chrome_bin = os.getenv("CHROME_BIN")
             if chrome_bin:
                 options.binary_location = chrome_bin
@@ -40,8 +41,16 @@ class CRISPRScraper:
 
             user_data_dir = tempfile.mkdtemp()
             options.add_argument(f"--user-data-dir={user_data_dir}")
-            
-            driver = webdriver.Chrome(options=options)
+
+            # Explicitly use ChromeDriver path from environment if set
+            chromedriver_path = os.getenv("CHROMEDRIVER_PATH")
+            if chromedriver_path:
+                self.log(f"Using ChromeDriver at: {chromedriver_path}")
+                service = Service(executable_path=chromedriver_path)
+                driver = webdriver.Chrome(service=service, options=options)
+            else:
+                driver = webdriver.Chrome(options=options)
+
             driver.set_page_load_timeout(300)
             driver.set_script_timeout(300)
             return driver
@@ -71,7 +80,6 @@ class CRISPRScraper:
             return genomes
         except Exception as e:
             self.log(f"Error fetching genome list: {e}", logging.ERROR)
-            # Fallback to standard plant genomes in case the server is offline or extremely slow
             fallback_genomes = [
                 "Glycine max (V1.0)",
                 "Arabidopsis thaliana (TAIR10)",
@@ -106,7 +114,6 @@ class CRISPRScraper:
             dropdown.find_element(By.XPATH, f"//option[. = '{selected_genome}']").click()
         except Exception:
             self.log(f"Genome selection failed, trying fallback element match...")
-            # Try selecting by value or partial text match
             options = dropdown.find_elements(By.TAG_NAME, "option")
             matched = False
             for opt in options:
@@ -118,7 +125,6 @@ class CRISPRScraper:
                 raise ValueError(f"Genome '{selected_genome}' not found in the dropdown menu.")
         time.sleep(1)
 
-        # PAM selector map matching index
         pam_options = [
             "NGG (SpCas9)", "NAG (SpCas9)", "NGA (SpCas9)",
             "NNGRRT (SaCas9)", "NNNRRT (SaCas9-KKH)",
@@ -137,7 +143,6 @@ class CRISPRScraper:
         Select(pam_dropdown).select_by_index(pam_index)
         time.sleep(0.5)
 
-        # Guide length
         guide_length_numeric = guide_length.replace(" bp", "").strip()
         self.log(f"Setting spacer length: {guide_length_numeric} bp")
         guide_length_dropdown = wait.until(EC.presence_of_element_located((By.ID, "spacer_length")))
@@ -148,7 +153,6 @@ class CRISPRScraper:
             Select(guide_length_dropdown).select_by_index(guide_length_index)
         time.sleep(0.5)
 
-        # Promoter (U3 or U6)
         self.log(f"Setting plant promoter: {promoter}")
         if "U6" in promoter:
             driver.find_element(By.CSS_SELECTOR, "label:nth-child(1) > #ppp").click()
@@ -156,7 +160,6 @@ class CRISPRScraper:
             driver.find_element(By.CSS_SELECTOR, "label:nth-child(2) > #ppp").click()
         time.sleep(0.5)
 
-        # Input fields
         if locus_tag:
             self.log(f"Injecting Locus Tag target: '{locus_tag}'")
             locus_input = wait.until(EC.presence_of_element_located((By.ID, "loc_search")))
@@ -198,7 +201,6 @@ class CRISPRScraper:
             except Exception:
                 continue
 
-        # Fallbacks for identification
         max_rows = 0
         results_table = None
         for table in all_tables:
@@ -317,7 +319,6 @@ class CRISPRScraper:
                 gc_content = 0.0
                 region = ""
 
-                # Identify sequence
                 for cell in cells:
                     text = cell.text.strip()
                     if len(text) >= 15 and len(text) <= 28 and all(c.upper() in 'ATCGN' for c in text if c.isalpha()):
@@ -325,7 +326,6 @@ class CRISPRScraper:
                         grna_element = cell
                         break
 
-                # Score
                 for text in cell_texts:
                     try:
                         val = float(text)
@@ -335,7 +335,6 @@ class CRISPRScraper:
                     except ValueError:
                         pass
 
-                # GC content
                 for text in cell_texts:
                     if '%' in text:
                         try:
@@ -344,14 +343,12 @@ class CRISPRScraper:
                         except ValueError:
                             pass
 
-                # Region
                 for text in cell_texts:
                     text_lower = text.lower()
                     if text_lower in ['exon', 'utr', 'intron', 'cds', "5'utr", "3'utr"]:
                         region = text_lower
                         break
 
-                # Position & Strand
                 position_val = ""
                 strand_val = "+"
                 for text in cell_texts:
@@ -383,11 +380,9 @@ class CRISPRScraper:
 
         self.log(f"Extracted {len(grna_data)} gRNA targets. Prioritizing candidates based on criteria...")
         
-        # High quality filters: score > 0 and GC content > 40% (matching original research priorities)
         high_score = [g for g in grna_data if g['score'] > 0.0]
         good_gc = [g for g in high_score if g['gc_content'] > 40.0]
 
-        # Region prioritization (Exons/CDS targets have premium therapeutic and knockout potential)
         region_priority = {'exon': 3, 'cds': 2.5, 'utr': 2, "5'utr": 2, "3'utr": 2, 'intron': 1}
         
         prioritized_grnas = sorted(
@@ -406,7 +401,7 @@ class CRISPRScraper:
                 reverse=True
             )[:30]
 
-        self.log(f"Re-ranked {len(top_grnas)} prime candidates. Performing off-target audits (hovering/scraping details)...")
+        self.log(f"Re-ranked {len(top_grnas)} prime candidates. Performing off-target audits...")
         for idx, grna in enumerate(top_grnas):
             self.log(f"Auditing off-targets for candidate gRNA {idx+1}/{len(top_grnas)}: {grna['sequence']}")
             off_targets = self._get_off_target_data_by_interaction(driver, grna['element'])
@@ -418,7 +413,6 @@ class CRISPRScraper:
             grna['critical_count'] = len(critical_off_targets)
             time.sleep(0.5)
 
-        # Final sort: lowest critical off-target count first (safety), then lowest total off-targets, then exons first, then highest score
         final_prioritized = sorted(
             top_grnas,
             key=lambda x: (
@@ -429,7 +423,6 @@ class CRISPRScraper:
             )
         )
 
-        # Strip Selenium WebElements before returning via JSON API
         clean_results = []
         for g in final_prioritized:
             clean_results.append({
