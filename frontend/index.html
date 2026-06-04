@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2.3">
+    <link rel="stylesheet" href="styles.css?v=2.4">
 </head>
 <body>
     <div class="app-container">
@@ -195,8 +195,8 @@
                         </div>
 
                         <div style="text-align: center;">
-                            <h3 style="font-family: 'Outfit', sans-serif; font-size: 20px; margin-bottom: 8px;">Designing Guide RNAs...</h3>
-                            <p style="color: var(--text-muted); font-size: 16px;">The CRISPR-PLANT server is running the selection algorithm.</p>
+                            <h3 style="font-family: 'Outfit', sans-serif; font-size: 24px; margin-bottom: 8px;">Designing Guide RNAs...</h3>
+                            <p style="color: var(--text-muted); font-size: 19px;">The CRISPR-PLANT server is running the selection algorithm.</p>
                         </div>
 
                         <!-- Monospace Logger Console -->
@@ -221,7 +221,7 @@
 
                     <!-- CRISPR Guide Candidate Evaluation Summary Strip -->
                     <div class="panel metrics-strip-container" style="display: none; margin-bottom:16px;">
-                        <div class="panel-title" style="margin-bottom: 12px; border:none; padding:0; font-size:13px; display:flex; gap: 8px; align-items:center;">
+                        <div class="panel-title" style="margin-bottom: 12px; border:none; padding:0; font-size:16px; display:flex; gap: 8px; align-items:center;">
                             Summary Metrics (Current Filtered Cohort)
                         </div>
                         <div class="metrics-grid">
@@ -240,10 +240,10 @@
                     <div class="panel shortlist-comparison-box" id="shortlist-box" style="display:none; margin-bottom: 16px;">
                         <div class="panel-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom:1px solid var(--border-neutral); padding-bottom:8px;">
                             <span>Starred Candidates Shortlist & Comparison</span>
-                            <button id="clear-shortlist-btn" class="quick-q-btn" style="padding: 2px 8px; font-size:11px;">Clear All</button>
+                            <button id="clear-shortlist-btn" class="quick-q-btn" style="padding: 2px 8px; font-size:14px;">Clear All</button>
                         </div>
                         <div class="shortlist-table-container" style="overflow-x:auto;">
-                            <table class="grna-table" style="font-size:13.5px;">
+                            <table class="grna-table" style="font-size:16.5px;">
                                 <thead>
                                     <tr>
                                         <th>Rank</th>
@@ -265,7 +265,7 @@
 
                     <!-- Scientific Decision-Support Filters -->
                     <div class="filters-panel" style="display: none;">
-                        <div class="panel-title" style="margin-bottom: 8px; border:none; padding:0; font-size:13px;">
+                        <div class="panel-title" style="margin-bottom: 8px; border:none; padding:0; font-size:16px;">
                             Scientific Selection Filters
                         </div>
                         <div class="filters-container">
@@ -359,8 +359,8 @@
                             
                             <!-- Search Form -->
                             <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                                <input type="text" id="lit-search-input" class="form-input" style="padding: 8px 12px; font-size: 15px;" placeholder="Search papers: e.g., Cas9 off-target mutations plant">
-                                <button id="lit-search-btn" class="btn" style="width: auto; padding: 8px 16px; font-size: 15px;">Search</button>
+                                <input type="text" id="lit-search-input" class="form-input" style="padding: 8px 12px; font-size: 18px;" placeholder="Search papers: e.g., Cas9 off-target mutations plant">
+                                <button id="lit-search-btn" class="btn" style="width: auto; padding: 8px 16px; font-size: 18px;">Search</button>
                             </div>
 
                             <!-- Presets -->
@@ -372,7 +372,7 @@
 
                             <!-- Papers Box -->
                             <div id="papers-list-container" style="flex:1; overflow-y:auto; max-height:280px; display:flex; flex-direction:column; gap:12px; padding-right:4px;">
-                                <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 15px;">
+                                <div style="text-align:center; padding: 40px 20px; color: var(--text-muted); font-size: 18px;">
                                     Click search or a preset button above to load scientific papers directly from the OpenAlex open-access publication database.
                                 </div>
                             </div>
@@ -384,12 +384,12 @@
                         <div class="panel-title" style="margin-bottom: 12px; border:none; padding:0;">
                             Critical Off-Target Genes Deep-Dive
                         </div>
-                        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+                        <p style="font-size: 17px; color: var(--text-muted); margin-bottom: 16px;">
                             Below are the specific genes that are high risk of being targeted unintentionally by your top gRNAs. Click on a gene to instantly fetch related research papers from the open literature to examine its biological importance.
                         </p>
                         <div id="critical-genes-accordion">
                             <!-- Accordion items loaded dynamically -->
-                            <div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 15px;">
+                            <div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 18px;">
                                 No critical off-targets identified across candidate guides.
                             </div>
                         </div>
@@ -435,12 +435,12 @@
             <button class="quick-q-btn" data-q="What laboratory assays should I run to validate these guides experimentally?">Lab Assays</button>
         </div>
         <div class="chat-input-bar">
-            <input type="text" id="chat-user-input" class="form-input" style="padding: 8px 12px; font-size: 15px;" placeholder="Ask about CRISPR results...">
+            <input type="text" id="chat-user-input" class="form-input" style="padding: 8px 12px; font-size: 18px;" placeholder="Ask about CRISPR results...">
             <button id="chat-send-btn" class="btn" style="width: auto; padding: 8px 16px;">Send</button>
         </div>
     </div>
 
     <!-- Main JavaScript Controller -->
-    <script src="app.js?v=2.3"></script>
+    <script src="app.js?v=2.4"></script>
 </body>
 </html>

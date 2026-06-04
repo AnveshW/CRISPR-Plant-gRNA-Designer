@@ -528,8 +528,8 @@ function renderTable(data) {
         elements.grnaTableBody.innerHTML = `
             <tr>
                 <td colspan="10" style="text-align:left; padding: 40px; color: var(--text-muted);">
-                    <div style="font-size:16px; margin-bottom:8px; font-weight:600;">No Designed Candidates Match Filters</div>
-                    <div style="font-size:14px; color:var(--text-inactive);">Try relaxing your selection filters (e.g. min efficiency or risk limits).</div>
+                    <div style="font-size:19px; margin-bottom:8px; font-weight:600;">No Designed Candidates Match Filters</div>
+                    <div style="font-size:17px; color:var(--text-inactive);">Try relaxing your selection filters (e.g. min efficiency or risk limits).</div>
                 </td>
             </tr>
         `;
@@ -572,7 +572,7 @@ function renderTable(data) {
         
         // Check if starred favorite
         const isStarred = state.shortlist.includes(grna.sequence);
-        const starHTML = `<span class="star-toggle" onclick="event.stopPropagation(); window.toggleShortlist('${grna.sequence}')" style="cursor:pointer; font-size:16px; margin-right:8px; color:${isStarred ? '#4a7c59' : 'var(--text-inactive)'};">${isStarred ? '★' : '☆'}</span>`;
+        const starHTML = `<span class="star-toggle" onclick="event.stopPropagation(); window.toggleShortlist('${grna.sequence}')" style="cursor:pointer; font-size:19px; margin-right:8px; color:${isStarred ? '#4a7c59' : 'var(--text-inactive)'};">${isStarred ? '★' : '☆'}</span>`;
 
         // Warnings layout
         let warningIcons = '';
@@ -678,7 +678,7 @@ function renderShortlist() {
 
         tr.innerHTML = `
             <td class="rank-cell">${idx + 1}</td>
-            <td><span class="mono seq-align-box" style="padding:2px 4px; font-size:13px;">${grna.spacerSeq}</span></td>
+            <td><span class="mono seq-align-box" style="padding:2px 4px; font-size:16px;">${grna.spacerSeq}</span></td>
             <td><span class="mono seq-pam-mark">${grna.pamSeq}</span></td>
             <td class="tabular mono">
                 ${getGcCircleSvg(grna.gc_content)}<span>${grna.gc_content.toFixed(1)}%</span>
@@ -687,7 +687,7 @@ function renderShortlist() {
             <td><span class="region-pill ${regionLower}">${grna.region.toUpperCase()}</span></td>
             <td style="color:${recColor}; font-weight:600;">${recStatus}</td>
             <td>
-                <button class="quick-q-btn" onclick="window.toggleShortlist('${grna.sequence}')" style="padding:2px 8px; font-size:11px; background:none; border-color:var(--border-neutral); color:var(--text-muted);">
+                <button class="quick-q-btn" onclick="window.toggleShortlist('${grna.sequence}')" style="padding:2px 8px; font-size:14px; background:none; border-color:var(--border-neutral); color:var(--text-muted);">
                     Remove
                 </button>
             </td>
@@ -739,10 +739,10 @@ function openDetailDrawer(seq) {
     const positionText = grna.computedStart !== null ? `${grna.computedStart}-${grna.computedEnd} bp` : 'N/A (pos map not loaded)';
 
     // Build specific off-target genes list
-    let offTargetsHTML = `<div style="font-size:13.5px; color:var(--text-muted); padding: 4px 0;">No critical off-targets parsed. Perfect specificity profile.</div>`;
+    let offTargetsHTML = `<div style="font-size:16.5px; color:var(--text-muted); padding: 4px 0;">No critical off-targets parsed. Perfect specificity profile.</div>`;
     if (grna.off_targets && grna.off_targets.length > 0) {
         offTargetsHTML = `
-            <table class="drawer-data-table" style="font-size:14px; margin-top:6px;">
+            <table class="drawer-data-table" style="font-size:17px; margin-top:6px;">
                 <thead>
                     <tr style="color:var(--text-muted); text-align:left; border-bottom:1px solid var(--border-neutral);">
                         <th style="padding:6px 0;">Off-Target Sequence</th>
@@ -754,7 +754,7 @@ function openDetailDrawer(seq) {
                     ${grna.off_targets.map(ot => `
                         <tr style="border-bottom: 1px solid var(--border-neutral);">
                             <td class="mono" style="padding:6px 0;">${ot.sequence}</td>
-                            <td style="padding:6px 0; text-transform:uppercase; font-size:12px;">${ot.region}</td>
+                            <td style="padding:6px 0; text-transform:uppercase; font-size:15px;">${ot.region}</td>
                             <td style="padding:6px 0; text-align:right; font-weight:bold;">${ot.gene || 'N/A'}</td>
                         </tr>
                     `).join('')}
@@ -770,21 +770,21 @@ function openDetailDrawer(seq) {
     elements.drawerBodyContent.innerHTML = `
         <!-- Candidate Identity -->
         <div>
-            <div style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Candidate Record Profile</div>
-            <h2 style="font-family:'Instrument Serif', Georgia, serif; font-style: italic; color:var(--text-main); font-size:28px; margin-top:2px;">Guide # ${rank}</h2>
+            <div style="font-size:15px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Candidate Record Profile</div>
+            <h2 style="font-family:'Instrument Serif', Georgia, serif; font-style: italic; color:var(--text-main); font-size:34px; margin-top:2px;">Guide # ${rank}</h2>
         </div>
  
         <!-- Spacer Display -->
         <div style="background:var(--bg-control); border:1px solid var(--border-neutral); padding:12px; border-radius:2px;">
-            <div class="mono" style="font-size:16px; font-weight:700; letter-spacing:0.5px; color: var(--text-main);">
+            <div class="mono" style="font-size:20px; font-weight:700; letter-spacing:0.5px; color: var(--text-main);">
                 ${grna.spacerSeq}<span style="color:var(--pam-color); text-decoration:underline;">${grna.pamSeq}</span>
             </div>
         </div>
  
         <!-- Decision Support Box -->
         <div style="background:var(--primary-bg); border:1px solid ${recColor}; border-radius:2px; padding:12px;">
-            <div style="font-size:14px; font-weight:700; color:${recColor}; text-transform: uppercase; letter-spacing: 0.3px;">${recStatus}</div>
-            <div style="font-size:14px; line-height:1.45; color:var(--text-main); margin-top:6px;">
+            <div style="font-size:19px; font-weight:700; color:${recColor}; text-transform: uppercase; letter-spacing: 0.3px;">${recStatus}</div>
+            <div style="font-size:18px; line-height:1.45; color:var(--text-main); margin-top:6px;">
                 ${recExplanation}
             </div>
         </div>
@@ -793,7 +793,7 @@ function openDetailDrawer(seq) {
         <div>
             <div class="drawer-section-title">Design Parameters</div>
             <table class="drawer-data-table">
-                <tr><td class="lbl">Predicted Efficiency</td><td class="val" style="color:var(--primary); font-size:15px;">${grna.score.toFixed(4)}</td></tr>
+                <tr><td class="lbl">Predicted Efficiency</td><td class="val" style="color:var(--primary); font-size:18px;">${grna.score.toFixed(4)}</td></tr>
                 <tr><td class="lbl">GC Content Ratio</td><td class="val" style="color:var(--text-main);">${grna.gc_content.toFixed(1)}%</td></tr>
                 <tr><td class="lbl">Targeted Strand</td><td class="val" style="color:var(--text-main);">${strandLabel}</td></tr>
                 <tr><td class="lbl">Genomic Annotation</td><td class="val" style="color:var(--text-main); text-transform:uppercase;">${grna.region}</td></tr>
@@ -811,10 +811,10 @@ function openDetailDrawer(seq) {
  
         <!-- Action Drawer Options -->
         <div style="margin-top:20px; display:flex; gap:10px;">
-            <button class="btn" style="flex:1; padding:8px 12px; font-size:14px; border-radius: 2px;" onclick="window.toggleShortlist('${grna.sequence}')">
+            <button class="btn" style="flex:1; padding:8px 12px; font-size:17px; border-radius: 2px;" onclick="window.toggleShortlist('${grna.sequence}')">
                 ${state.shortlist.includes(grna.sequence) ? 'Unstar Candidate' : 'Star Candidate'}
             </button>
-            <button class="btn btn-secondary" style="width:60px; padding:0; border-radius: 2px; font-size: 13px;" onclick="window.copyToClipboard('${grna.sequence}', 'drawer-copy')" id="drawer-copy" title="Copy spacer+PAM">
+            <button class="btn btn-secondary" style="width:60px; padding:0; border-radius: 2px; font-size: 16px;" onclick="window.copyToClipboard('${grna.sequence}', 'drawer-copy')" id="drawer-copy" title="Copy spacer+PAM">
                 COPY
             </button>
         </div>
@@ -977,7 +977,7 @@ function buildCriticalGenesExplorer() {
 
     if (allCriticalGenes.length === 0) {
         container.innerHTML = `
-            <div style="text-align:left; padding: 24px; color: var(--text-muted); font-size: 15px;">
+            <div style="text-align:left; padding: 24px; color: var(--text-muted); font-size: 18px;">
                 No critical off-target genes identified across candidate guides. This sequence offers excellent specificity.
             </div>
         `;
@@ -992,10 +992,10 @@ function buildCriticalGenesExplorer() {
         row.innerHTML = `
             <div class="gene-explorer-trigger">
                 <span class="gene-name">Gene target: <strong>${gene}</strong></span>
-                <span class="arrow" style="font-size:14px; color:var(--text-muted);">Expand deep-dive papers</span>
+                <span class="arrow" style="font-size:17px; color:var(--text-muted);">Expand deep-dive papers</span>
             </div>
             <div class="gene-papers-content">
-                <div class="papers-loader" style="text-align:left; padding: 20px; color: var(--text-muted); font-size: 14px;">
+                <div class="papers-loader" style="text-align:left; padding: 20px; color: var(--text-muted); font-size: 17px;">
                     Fetching OpenAlex papers for ${gene}...
                 </div>
                 <div class="gene-papers-results-grid" style="display:flex; flex-direction:column; gap:10px;"></div>
@@ -1033,7 +1033,7 @@ async function fetchGeneLiterature(gene, gridEl, loaderEl) {
         const papers = data.papers || [];
         
         if (papers.length === 0) {
-            gridEl.innerHTML = `<div style="font-size:14px; color:var(--text-muted); text-align:left;">No direct papers resolved for '${gene}' in OpenAlex DB. Try broader search.</div>`;
+            gridEl.innerHTML = `<div style="font-size:17px; color:var(--text-muted); text-align:left;">No direct papers resolved for '${gene}' in OpenAlex DB. Try broader search.</div>`;
             return;
         }
 
@@ -1046,11 +1046,11 @@ async function fetchGeneLiterature(gene, gridEl, loaderEl) {
             const oa = paper.open_access ? '<span class="paper-badge">Open Access</span>' : '';
             
             card.innerHTML = `
-                <div style="font-weight:600; font-size:17px; margin-bottom:4px; color:var(--text-main);">${paper.title}</div>
-                <div style="font-size:15px; color:var(--text-muted); margin-bottom:6px;">
+                <div style="font-weight:600; font-size:20px; margin-bottom:4px; color:var(--text-main);">${paper.title}</div>
+                <div style="font-size:17px; color:var(--text-muted); margin-bottom:6px;">
                     By ${paper.authors} (${paper.year}) | Citations: ${paper.citations} ${oa}
                 </div>
-                <div style="font-size:15.5px; line-height:1.4; color:var(--text-muted); margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
+                <div style="font-size:17.5px; line-height:1.4; color:var(--text-muted); margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
                     ${paper.abstract || 'No abstract preview available. View DOI link.'}
                 </div>
                 <a href="${paper.url}" target="_blank" class="paper-doi-link">View DOI Portal</a>
@@ -1060,7 +1060,7 @@ async function fetchGeneLiterature(gene, gridEl, loaderEl) {
 
     } catch (e) {
         loaderEl.style.display = 'none';
-        gridEl.innerHTML = `<div style="font-size:14px; color:var(--error); text-align:left;">Failed to load OpenAlex papers: ${e.message}</div>`;
+        gridEl.innerHTML = `<div style="font-size:17px; color:var(--error); text-align:left;">Failed to load OpenAlex papers: ${e.message}</div>`;
     }
 }
 
@@ -1072,7 +1072,7 @@ async function handleCustomPaperSearch() {
 
 async function searchLiterature(query) {
     elements.papersListContainer.innerHTML = `
-        <div style="text-align:left; padding: 40px; color: var(--text-muted); font-size: 15px;">
+        <div style="text-align:left; padding: 40px; color: var(--text-muted); font-size: 18px;">
             Querying OpenAlex databases for "${query}"...
         </div>
     `;
@@ -1087,7 +1087,7 @@ async function searchLiterature(query) {
         
         if (papers.length === 0) {
             elements.papersListContainer.innerHTML = `
-                <div style="text-align:left; padding: 40px; color: var(--text-muted); font-size: 15px;">
+                <div style="text-align:left; padding: 40px; color: var(--text-muted); font-size: 18px;">
                     No results found in OpenAlex catalog. Try different keywords.
                 </div>
             `;
@@ -1116,7 +1116,7 @@ async function searchLiterature(query) {
 
     } catch (e) {
         elements.papersListContainer.innerHTML = `
-            <div style="text-align:left; padding: 40px; color: var(--error); font-size: 15px;">
+            <div style="text-align:left; padding: 40px; color: var(--error); font-size: 18px;">
                 Failed to search OpenAlex publications: ${e.message}
             </div>
         `;
