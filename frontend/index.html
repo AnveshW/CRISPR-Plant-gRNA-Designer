@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2.8">
+    <link rel="stylesheet" href="styles.css?v=2.9">
 </head>
 <body>
     <div class="app-container">
@@ -147,24 +147,21 @@
                 <!-- View 1: Welcome State -->
                 <section id="welcome-view" class="view-section active">
                     <div class="panel welcome-card">
-                        <h2>CRISPR-PLANT gRNA Designer</h2>
-                        <div style="font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: -6px; margin-bottom: 16px;">
-                            Contextual Intelligence & AI-Powered Decision Support
-                        </div>
-                        <p>An automated, safety-prioritized CRISPR gRNA design pipeline for plant genome editing. The system automates candidate selection by combining CRISPR-PLANT server integration, a two-phase safety-first ranking algorithm, and contextual intelligence: querying the OpenAlex literature database for critical off-target genes and offering real-time decision support via an interactive AI assistant.</p>
+                        <h2>Contextual Intelligence & AI-Powered Decision Support</h2>
+                        <p>An automated, safety-prioritized gRNA design pipeline for plant genome editing. It integrates CRISPR-PLANT automated access, safety-first candidate ranking, OpenAlex literature verification, and real-time AI decision support.</p>
                         
                         <div class="feature-highlights">
                             <div class="highlight-box">
                                 <h3>Safety-First Ranking</h3>
-                                <p>Filters candidates by efficiency thresholds, optimal GC content (>40%), and exonic priority, then sorts them hierarchically by minimizing coding-region off-targets.</p>
+                                <p>Filters by efficiency and GC content, then ranks candidates to minimize critical off-targets in coding sequences.</p>
                             </div>
                             <div class="highlight-box">
                                 <h3>Contextual Intelligence</h3>
-                                <p>Direct OpenAlex API integration queries public databases to instantly retrieve literature publications for target genes and off-target loci, translating prediction lists into biological insights.</p>
+                                <p>Instantly maps and fetches relevant scientific papers for target genes and critical off-target loci using OpenAlex.</p>
                             </div>
                             <div class="highlight-box">
                                 <h3>AI Decision Support</h3>
-                                <p>An interactive conversational assistant powered by Google Gemini provides real-time guidance on trade-offs between editing efficiency and genomic safety, assisting in evidence-based candidate selection.</p>
+                                <p>Provides real-time interactive guidance on candidate trade-offs between editing efficiency and safety.</p>
                             </div>
                         </div>
                     </div>
@@ -447,6 +444,6 @@
     </div>
 
     <!-- Main JavaScript Controller -->
-    <script src="app.js?v=2.8"></script>
+    <script src="app.js?v=2.9"></script>
 </body>
 </html>

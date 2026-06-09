@@ -97,10 +97,10 @@ header {
 }
 
 .logo-section h1.dashboard-title {
-    font-family: 'Instrument Serif', Georgia, serif;
-    font-size: 28px;
-    font-weight: 400;
-    letter-spacing: -0.2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
     color: var(--text-main);
     line-height: 1.1;
 }
