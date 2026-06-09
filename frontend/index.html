@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2.7">
+    <link rel="stylesheet" href="styles.css?v=2.8">
 </head>
 <body>
     <div class="app-container">
@@ -147,21 +147,24 @@
                 <!-- View 1: Welcome State -->
                 <section id="welcome-view" class="view-section active">
                     <div class="panel welcome-card">
-                        <h2>CRISPR Plant gRNA designer</h2>
-                        <p>Welcome! This application facilitates rigorous multivariable comparison, filtration, and triage of guide RNA spacer candidates for CRISPR genome editing in plant species. Input a Locus Tag or paste target DNA to evaluate candidate viability.</p>
+                        <h2>CRISPR-PLANT gRNA Designer</h2>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: -6px; margin-bottom: 16px;">
+                            Contextual Intelligence & AI-Powered Decision Support
+                        </div>
+                        <p>An automated, safety-prioritized CRISPR gRNA design pipeline for plant genome editing. The system automates candidate selection by combining CRISPR-PLANT server integration, a two-phase safety-first ranking algorithm, and contextual intelligence: querying the OpenAlex literature database for critical off-target genes and offering real-time decision support via an interactive AI assistant.</p>
                         
                         <div class="feature-highlights">
                             <div class="highlight-box">
-                                <h3>CRISPR-PLANT DB</h3>
-                                <p>Direct live integration with the HZAU Plant Genome databases for high accuracy.</p>
+                                <h3>Safety-First Ranking</h3>
+                                <p>Filters candidates by efficiency thresholds, optimal GC content (>40%), and exonic priority, then sorts them hierarchically by minimizing coding-region off-targets.</p>
                             </div>
                             <div class="highlight-box">
-                                <h3>Off-Target Auditing</h3>
-                                <p>Deep-dive off-target profiling automatically filtering potential exons or CDS hazards.</p>
+                                <h3>Contextual Intelligence</h3>
+                                <p>Direct OpenAlex API integration queries public databases to instantly retrieve literature publications for target genes and off-target loci, translating prediction lists into biological insights.</p>
                             </div>
                             <div class="highlight-box">
-                                <h3>Literature Integration</h3>
-                                <p>Direct link with OpenAlex API for instant scientific publication verification.</p>
+                                <h3>AI Decision Support</h3>
+                                <p>An interactive conversational assistant powered by Google Gemini provides real-time guidance on trade-offs between editing efficiency and genomic safety, assisting in evidence-based candidate selection.</p>
                             </div>
                         </div>
                     </div>
@@ -444,6 +447,6 @@
     </div>
 
     <!-- Main JavaScript Controller -->
-    <script src="app.js?v=2.7"></script>
+    <script src="app.js?v=2.8"></script>
 </body>
 </html>
