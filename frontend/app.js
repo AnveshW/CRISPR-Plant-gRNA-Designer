@@ -33,6 +33,10 @@ let state = {
     shortlist: [] // Starred candidates sequence list for comparison
 };
 
+// ── Progress Tracker Variables ──
+let progressTimerId = null;
+let elapsedSeconds = 0;
+
 // ── DOM References ──
 const elements = {
     serverStatusText: document.getElementById('server-status-text'),
@@ -55,7 +59,8 @@ const elements = {
     welcomeView: document.getElementById('welcome-view'),
     loadingView: document.getElementById('loading-view'),
     resultsView: document.getElementById('results-view'),
-    liveLogger: document.getElementById('live-logger'),
+    progressStatusText: document.getElementById('progress-status-text'),
+    progressElapsedCounter: document.getElementById('progress-elapsed-counter'),
     
     resultsCount: document.getElementById('results-count'),
     grnaTableBody: document.getElementById('grna-table-body'),
@@ -269,20 +274,44 @@ async function fetchGenomes() {
     }
 }
 
+// ── Resolve concise, clean error messages mapping ──
+function getCleanErrorMessage(rawMessage) {
+    const msg = String(rawMessage).toLowerCase();
+    if (msg.includes('connection_refused') || msg.includes('connection refused') || msg.includes('net::err_connection')) {
+        return "Connection refused: The CRISPR-PLANT portal is currently unreachable or offline.";
+    }
+    if (msg.includes('timeout') || msg.includes('timed out') || msg.includes('time out')) {
+        return "Request timed out: The CRISPR-PLANT server is slow or did not respond in time.";
+    }
+    if (msg.includes('no such element') || msg.includes('not found') || msg.includes('locus') || msg.includes('invalid')) {
+        return "Target not found: Locus tag was not recognized by the selected genome database.";
+    }
+    return "Design failed: Please check your input parameters and try again.";
+}
+
 // ── Append log message inside Stepper Panel ──
 function logProgress(msg, type = 'log') {
-    const row = document.createElement('div');
-    row.className = `logger-row ${type}`;
+    if (!elements.progressStatusText) return;
     
-    const now = new Date();
-    const timeStr = now.toTimeString().split(' ')[0];
+    if (type === 'error') {
+        const cleanMsg = getCleanErrorMessage(msg);
+        elements.progressStatusText.textContent = cleanMsg;
+        elements.progressStatusText.style.color = 'var(--risk-high)';
+        return;
+    }
     
-    row.innerHTML = `
-        <span class="logger-time">[${timeStr}]</span>
-        <span class="logger-text">${msg}</span>
-    `;
-    elements.liveLogger.appendChild(row);
-    elements.liveLogger.scrollTop = elements.liveLogger.scrollHeight;
+    const text = String(msg).toLowerCase();
+    if (text.includes('connecting') || text.includes('initializing') || text.includes('launching') || text.includes('spawning') || text.includes('chrome')) {
+        elements.progressStatusText.textContent = "Connecting to CRISPR-PLANT Design Portal...";
+    } else if (text.includes('selecting') || text.includes('setting') || text.includes('injecting') || text.includes('genome') || text.includes('promoter')) {
+        elements.progressStatusText.textContent = "Configuring design parameters...";
+    } else if (text.includes('submitting') || text.includes('running') || text.includes('request') || text.includes('portal')) {
+        elements.progressStatusText.textContent = "Submitting request and running selection algorithm...";
+    } else if (text.includes('auditing') || text.includes('off-target') || text.includes('candidates')) {
+        elements.progressStatusText.textContent = "Auditing candidate off-target profiles...";
+    } else if (text.includes('complete') || text.includes('rendering')) {
+        elements.progressStatusText.textContent = "Design complete! Rendering interactive dashboard...";
+    }
 }
 
 // ── Run gRNA Design Scraper ──
@@ -318,9 +347,23 @@ async function runAnalysis(e) {
     if (elements.floatingChatTrigger) elements.floatingChatTrigger.style.display = 'none';
     if (elements.floatingChatPanel) elements.floatingChatPanel.classList.add('hidden');
     
-    // Clear live logs
-    elements.liveLogger.innerHTML = '';
-    logProgress("Launching pipeline engine. Connecting web drivers...", 'important');
+    // Setup and clear progress UI
+    if (progressTimerId) clearInterval(progressTimerId);
+    elapsedSeconds = 0;
+    if (elements.progressElapsedCounter) {
+        elements.progressElapsedCounter.textContent = '0s';
+    }
+    if (elements.progressStatusText) {
+        elements.progressStatusText.textContent = 'Connecting to CRISPR-PLANT Design Portal...';
+        elements.progressStatusText.style.color = 'var(--primary)';
+    }
+
+    progressTimerId = setInterval(() => {
+        elapsedSeconds++;
+        if (elements.progressElapsedCounter) {
+            elements.progressElapsedCounter.textContent = `${elapsedSeconds}s`;
+        }
+    }, 1000);
 
     try {
         const response = await fetch(getApiUrl('analyze'), {
@@ -351,13 +394,15 @@ async function runAnalysis(e) {
                     if (data.type === 'log') {
                         logProgress(data.message);
                     } else if (data.type === 'complete') {
-                        logProgress("Guide RNA synthesis complete! Rendering interactive dashboard...", 'important');
+                        clearInterval(progressTimerId);
+                        logProgress("Guide RNA synthesis complete! Rendering interactive dashboard...", 'complete');
                         state.gRNAData = data.results || [];
                         setTimeout(() => {
                             renderResults();
                         }, 1000);
                     } else if (data.type === 'error') {
-                        logProgress(`Pipeline Error: ${data.message}`, 'error');
+                        clearInterval(progressTimerId);
+                        logProgress(data.message, 'error');
                         throw new Error(data.message);
                     }
                 }
@@ -365,8 +410,10 @@ async function runAnalysis(e) {
         }
 
     } catch (e) {
-        logProgress(`Execution failed: ${e.message}`, 'error');
-        alert(`An error occurred: ${e.message}\n\nPlease try again. The CRISPR-PLANT server might be slow.`);
+        clearInterval(progressTimerId);
+        const cleanMsg = getCleanErrorMessage(e.message);
+        logProgress(cleanMsg, 'error');
+        alert(`Design Failed: ${cleanMsg}`);
         // Revert to welcome card on fatal error
         setTimeout(() => {
             elements.loadingView.classList.remove('active');
