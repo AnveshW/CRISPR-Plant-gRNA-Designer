@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2.5">
+    <link rel="stylesheet" href="styles.css?v=2.6">
 </head>
 <body>
     <div class="app-container">
@@ -196,14 +196,14 @@
 
                         <div style="text-align: center;">
                             <h3 style="font-family: 'Outfit', sans-serif; font-size: 24px; margin-bottom: 8px;">Designing Guide RNAs...</h3>
-                            <p style="color: var(--text-muted); font-size: 19px;">The CRISPR-PLANT server is running the selection algorithm.</p>
+                            <p style="color: var(--text-muted); font-size: 19px;">The CRISPR-PLANT server is running the parsing algorithm.</p>
                         </div>
 
                         <!-- Progress Status Container -->
                         <div id="progress-panel" style="margin-top: 24px; padding: 24px; border: 1px solid var(--border-neutral); border-radius: 4px; background: rgba(0, 0, 0, 0.03); text-align: center;">
                             <div id="progress-status-text" style="font-weight: 600; font-size: 18px; color: var(--primary); margin-bottom: 8px;">Initializing pipeline...</div>
                             <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 16px; max-width: 550px; margin-left: auto; margin-right: auto; line-height: 1.5;">
-                                The CRISPR-PLANT portal typically takes 30 to 60 seconds to process genomic designs. You may safely switch tabs or review literature in the meantime.
+                                The CRISPR-PLANT portal typically takes around 300 seconds (5 minutes) to process genomic designs. You may safely switch tabs or perform other tasks in the meantime.
                             </p>
                             <div style="font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--text-main); font-weight: 500;">
                                 Elapsed Time: <span id="progress-elapsed-counter">0s</span>
@@ -444,6 +444,6 @@
     </div>
 
     <!-- Main JavaScript Controller -->
-    <script src="app.js?v=2.5"></script>
+    <script src="app.js?v=2.6"></script>
 </body>
 </html>

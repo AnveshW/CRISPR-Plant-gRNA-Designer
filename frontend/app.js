@@ -306,7 +306,7 @@ function logProgress(msg, type = 'log') {
     } else if (text.includes('selecting') || text.includes('setting') || text.includes('injecting') || text.includes('genome') || text.includes('promoter')) {
         elements.progressStatusText.textContent = "Configuring design parameters...";
     } else if (text.includes('submitting') || text.includes('running') || text.includes('request') || text.includes('portal')) {
-        elements.progressStatusText.textContent = "Submitting request and running selection algorithm...";
+        elements.progressStatusText.textContent = "Submitting request and running parsing algorithm...";
     } else if (text.includes('auditing') || text.includes('off-target') || text.includes('candidates')) {
         elements.progressStatusText.textContent = "Auditing candidate off-target profiles...";
     } else if (text.includes('complete') || text.includes('rendering')) {
