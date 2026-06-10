@@ -1249,12 +1249,19 @@ ${dynamicContext}
         
         typingBubble.remove();
         
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.detail || 'Gemini API Error');
+        const rawText = await res.text();
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch(err) {
+            console.error("Non-JSON response received:", rawText);
+            throw new Error(`Server returned non-JSON response (Status: ${res.status}). Raw output: ${rawText.substring(0, 100)}... Check browser console for full text.`);
         }
         
-        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.detail || `Server Error ${res.status}`);
+        }
+        
         const responseText = data.response;
         
         // Append response
