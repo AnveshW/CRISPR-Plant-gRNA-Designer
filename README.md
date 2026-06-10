@@ -11,7 +11,7 @@ Automated gRNA selection for plant genome editing with safety-first ranking and 
 - Submits your target to CRISPR-PLANT v2 and ranks all candidate gRNAs
 - Flags off-targets in coding regions as critical
 - Fetches relevant literature via **OpenAlex**
-- AI assistant (Gemini) pre-loaded with your results
+- AI assistant pre-loaded with your results
 - 75+ plant genomes | PAM: `NGG`, `NAG`, `NGA`, `NNGRRT`, `TTTN` | Guide length: 15–22 bp
 
 ---
