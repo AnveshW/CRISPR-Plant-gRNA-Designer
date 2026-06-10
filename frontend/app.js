@@ -1186,20 +1186,49 @@ async function sendChatMessage() {
     
     // Build context summary of gRNA results
     const genome = elements.inputGenome.value;
-    // Limit to top 20 candidates to prevent massive payload size and slow AI response times
-    const topCandidates = state.gRNAData.slice(0, 20);
-    const details = topCandidates.map(g => {
+    // Extract all unique genes mentioned in off-targets
+    const allGenes = new Set();
+    state.gRNAData.forEach(g => {
+        if (g.off_targets) {
+            g.off_targets.forEach(o => {
+                if (o.gene) allGenes.add(o.gene);
+            });
+        }
+    });
+    
+    // Check if user input mentions any of these genes
+    const mentionedGenes = [...allGenes].filter(gene => input.includes(gene));
+    
+    let dynamicContext = "";
+    if (mentionedGenes.length > 0) {
+        dynamicContext = "\n[Detailed Off-targets Context for user's mentioned genes]:\n";
+        mentionedGenes.forEach(gene => {
+            dynamicContext += `Gene ${gene}:\n`;
+            state.gRNAData.forEach(g => {
+                if (g.off_targets) {
+                    const ots = g.off_targets.filter(o => o.gene === gene);
+                    if (ots.length > 0) {
+                        dynamicContext += `  Candidate Seq ${g.sequence}: ${ots.length} off-target(s) (Regions: ${ots.map(o=>o.region).join(', ')})\n`;
+                    }
+                }
+            });
+        });
+    }
+
+    // Include all candidates in the base details, but keep it concise (one line per candidate)
+    const details = state.gRNAData.map(g => {
         const genes = g.off_targets ? [...new Set(g.off_targets.filter(o => o.gene && o.region && ['exon', 'cds', 'utr'].includes(o.region)).map(o => o.gene))] : [];
         return `Seq: ${g.sequence} | Score: ${g.score.toFixed(4)} | GC: ${g.gc_content.toFixed(1)}% | Region: ${g.region} | Crit-Offtargets: ${g.critical_count} | Affected-Genes: ${genes.join(',') || 'None'}`;
-    }).join('\n') + (state.gRNAData.length > 20 ? `\n\n... and ${state.gRNAData.length - 20} more candidates not shown.` : '');
+    }).join('\n');
     
     const summary = `
 Analysis Target: ${elements.inputLocus.value.trim() || state.inputType}
 Organism Genome: ${genome}
 Total candidate gRNAs analyzed: ${state.gRNAData.length}
 
-All gRNA Details:
+All gRNA Candidate Overviews:
 ${details}
+${dynamicContext}
     `;
 
     // Typing bubble loader
