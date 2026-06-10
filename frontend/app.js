@@ -1186,10 +1186,12 @@ async function sendChatMessage() {
     
     // Build context summary of gRNA results
     const genome = elements.inputGenome.value;
-    const details = state.gRNAData.map(g => {
+    // Limit to top 20 candidates to prevent massive payload size and slow AI response times
+    const topCandidates = state.gRNAData.slice(0, 20);
+    const details = topCandidates.map(g => {
         const genes = g.off_targets ? [...new Set(g.off_targets.filter(o => o.gene && o.region && ['exon', 'cds', 'utr'].includes(o.region)).map(o => o.gene))] : [];
         return `Seq: ${g.sequence} | Score: ${g.score.toFixed(4)} | GC: ${g.gc_content.toFixed(1)}% | Region: ${g.region} | Crit-Offtargets: ${g.critical_count} | Affected-Genes: ${genes.join(',') || 'None'}`;
-    }).join('\n');
+    }).join('\n') + (state.gRNAData.length > 20 ? `\n\n... and ${state.gRNAData.length - 20} more candidates not shown.` : '');
     
     const summary = `
 Analysis Target: ${elements.inputLocus.value.trim() || state.inputType}
