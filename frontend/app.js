@@ -1247,26 +1247,49 @@ ${dynamicContext}
             body: JSON.stringify(payload)
         });
         
-        typingBubble.remove();
-        
-        const rawText = await res.text();
-        let data;
-        try {
-            data = JSON.parse(rawText);
-        } catch(err) {
-            console.error("Non-JSON response received:", rawText);
-            throw new Error(`Server returned non-JSON response (Status: ${res.status}). Raw output: ${rawText.substring(0, 100)}... Check browser console for full text.`);
-        }
-        
         if (!res.ok) {
-            throw new Error(data.detail || `Server Error ${res.status}`);
+            typingBubble.remove();
+            const rawText = await res.text();
+            console.error("Chat API error response:", rawText);
+            throw new Error(`Server Error ${res.status}. Check browser console for details.`);
         }
-        
-        const responseText = data.response;
-        
-        // Append response
-        appendChatBubble('assistant', responseText);
-        state.chatHistory.push({ role: 'assistant', content: responseText });
+
+        // Read the SSE stream from the backend
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            // Process complete SSE lines from the buffer
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep incomplete line in buffer
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                try {
+                    const event = JSON.parse(line.slice(6));
+                    if (event.type === 'heartbeat') {
+                        // Connection alive — do nothing
+                        continue;
+                    }
+                    if (event.type === 'response') {
+                        typingBubble.remove();
+                        appendChatBubble('assistant', event.text);
+                        state.chatHistory.push({ role: 'assistant', content: event.text });
+                    }
+                    if (event.type === 'error') {
+                        typingBubble.remove();
+                        appendChatBubble('assistant', `Error: ${event.message}`);
+                    }
+                } catch (parseErr) {
+                    console.warn("Could not parse SSE line:", line, parseErr);
+                }
+            }
+        }
         
     } catch (e) {
         typingBubble.remove();

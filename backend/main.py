@@ -215,36 +215,49 @@ async def search_papers(query: str, per_page: int = 5):
         logger.error(f"Paper search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/health")
+async def health_check():
+    """Debug endpoint to verify the backend is reachable through the HPC proxy."""
+    api_key = get_gemini_api_key()
+    return {
+        "status": "ok",
+        "gemini_key_configured": bool(api_key),
+        "gemini_key_prefix": api_key[:8] + "..." if api_key else None,
+    }
+
 @app.post("/api/chat")
 async def chat_assistant(req: ChatRequest):
-    """Chats with Gemini API regarding CRISPR design results."""
+    """
+    Chats with Gemini API regarding CRISPR design results.
+    Uses SSE streaming to keep the HPC reverse-proxy connection alive
+    and prevent 502 gateway timeouts.
+    """
     # Find api key: check user payload first, then server environment/secrets
     api_key = req.user_key or get_gemini_api_key()
     if not api_key:
         raise HTTPException(status_code=400, detail="Gemini API Key is not configured on the server. Please enter your API key in the chat settings.")
 
-    try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
-        
-        # Detect if the last user message is a casual/non-technical query
-        last_user_msg = next(
-            (m.content for m in reversed(req.messages) if m.role == "user"), ""
-        )
-        
-        CASUAL_PHRASES = {"hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "bye", "good morning", "good afternoon"}
-        is_casual = last_user_msg.strip().lower().rstrip("!.") in CASUAL_PHRASES
+    async def stream_chat():
+        try:
+            from google import genai
+            client = genai.Client(api_key=api_key)
 
-        if is_casual:
-            # Lightweight system prompt for conversational messages
-            system_prompt = (
-                "You are a helpful CRISPR/Cas9 gRNA design assistant. "
-                "Respond naturally, politely, and briefly (1 sentence) to casual greetings or pleasantries."
+            # Detect if the last user message is a casual/non-technical query
+            last_user_msg = next(
+                (m.content for m in reversed(req.messages) if m.role == "user"), ""
             )
-        else:
-            # Full scientific system prompt with gRNA context
-            system_prompt = f"""You are an expert CRISPR/Cas9 gRNA design assistant with deep knowledge of plant biotechnology and genome editing.
-        
+
+            CASUAL_PHRASES = {"hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "bye", "good morning", "good afternoon"}
+            is_casual = last_user_msg.strip().lower().rstrip("!.") in CASUAL_PHRASES
+
+            if is_casual:
+                system_prompt = (
+                    "You are a helpful CRISPR/Cas9 gRNA design assistant. "
+                    "Respond naturally, politely, and briefly (1 sentence) to casual greetings or pleasantries."
+                )
+            else:
+                system_prompt = f"""You are an expert CRISPR/Cas9 gRNA design assistant with deep knowledge of plant biotechnology and genome editing.
+
 You are analyzing a set of designed plant guide RNAs. Here is the context of their analysis:
 {req.summary}
 
@@ -259,25 +272,39 @@ IMPORTANT GUIDANCE:
 4. Encourage users to evaluate which critical off-target genes are important for their research.
 Be concise (2-3 paragraphs maximum for scientific answers). Keep it highly scientific, precise, and practical."""
 
-        # Format history for Gemini SDK
-        conversation = [f"System Instructions:\n{system_prompt}"]
-        for msg in req.messages:
-            role_label = "User" if msg.role == "user" else "Assistant"
-            conversation.append(f"{role_label}: {msg.content}")
-        
-        # Request generation
-        prompt_text = "\n\n".join(conversation)
-        
-        # Run generation
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt_text
-        )
-        
-        return {"response": response.text}
-    except Exception as e:
-        logger.error(f"Gemini API failure: {e}")
-        raise HTTPException(status_code=500, detail=f"Gemini API Error: {str(e)}")
+            # Format history for Gemini SDK
+            conversation = [f"System Instructions:\n{system_prompt}"]
+            for msg in req.messages:
+                role_label = "User" if msg.role == "user" else "Assistant"
+                conversation.append(f"{role_label}: {msg.content}")
+
+            prompt_text = "\n\n".join(conversation)
+
+            # Send a keepalive heartbeat so the proxy knows we are alive
+            yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+
+            # Run Gemini generation in a thread with a 120-second timeout
+            def _call_gemini():
+                return client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt_text
+                )
+
+            response = await asyncio.wait_for(
+                asyncio.to_thread(_call_gemini),
+                timeout=120
+            )
+
+            yield f"data: {json.dumps({'type': 'response', 'text': response.text})}\n\n"
+
+        except asyncio.TimeoutError:
+            logger.error("Gemini API call timed out after 120s")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'The AI assistant timed out (120s). The server may be under heavy load — please try again.'})}\n\n"
+        except Exception as e:
+            logger.error(f"Gemini API failure: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Gemini API Error: {str(e)}'})}\n\n"
+
+    return StreamingResponse(stream_chat(), media_type="text/event-stream")
 
 # Mount static frontend at "/" — root_path="/sharp" on the FastAPI app
 # already tells the framework the app lives under /sharp.
