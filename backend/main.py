@@ -280,26 +280,50 @@ Be concise (2-3 paragraphs maximum for scientific answers). Keep it highly scien
 
             prompt_text = "\n\n".join(conversation)
 
-            # Send a keepalive heartbeat so the proxy knows we are alive
+            # Send initial heartbeat immediately
             yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
 
-            # Run Gemini generation in a thread with a 120-second timeout
+            # Launch Gemini call in background thread
+            from google.genai import types as genai_types
+
             def _call_gemini():
                 return client.models.generate_content(
                     model="gemini-2.5-flash",
-                    contents=prompt_text
+                    contents=prompt_text,
+                    config=genai_types.GenerateContentConfig(
+                        thinking_config=genai_types.ThinkingConfig(
+                            thinking_budget=1024
+                        )
+                    )
                 )
 
-            response = await asyncio.wait_for(
-                asyncio.to_thread(_call_gemini),
-                timeout=120
-            )
+            gemini_task = asyncio.ensure_future(asyncio.to_thread(_call_gemini))
 
+            # Send heartbeats every 10s while waiting for the Gemini response
+            # This keeps the HPC reverse-proxy connection alive
+            HEARTBEAT_INTERVAL = 10  # seconds
+            TOTAL_TIMEOUT = 300      # seconds
+            elapsed = 0
+
+            while not gemini_task.done():
+                try:
+                    await asyncio.wait_for(asyncio.shield(gemini_task), timeout=HEARTBEAT_INTERVAL)
+                except asyncio.TimeoutError:
+                    pass  # expected — just send another heartbeat
+                elapsed += HEARTBEAT_INTERVAL
+                if not gemini_task.done():
+                    if elapsed >= TOTAL_TIMEOUT:
+                        gemini_task.cancel()
+                        yield f"data: {json.dumps({'type': 'error', 'message': 'The AI assistant timed out (300s). Please try a simpler or shorter question.'})}\n\n"
+                        return
+                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+
+            response = gemini_task.result()
             yield f"data: {json.dumps({'type': 'response', 'text': response.text})}\n\n"
 
-        except asyncio.TimeoutError:
-            logger.error("Gemini API call timed out after 120s")
-            yield f"data: {json.dumps({'type': 'error', 'message': 'The AI assistant timed out (120s). The server may be under heavy load — please try again.'})}\n\n"
+        except asyncio.CancelledError:
+            logger.error("Gemini API task was cancelled")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Request was cancelled.'})}\n\n"
         except Exception as e:
             logger.error(f"Gemini API failure: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': f'Gemini API Error: {str(e)}'})}\n\n"
