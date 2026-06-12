@@ -217,14 +217,159 @@ async def search_papers(query: str, per_page: int = 5):
 
 @app.get("/api/health")
 async def health_check():
-    """Debug endpoint to verify the backend is reachable through the HPC proxy."""
-    api_key = get_gemini_api_key()
-    return {
-        "status": "ok",
-        "gemini_key_configured": bool(api_key),
-        "gemini_key_prefix": api_key[:8] + "..." if api_key else None,
+    """Quick health check."""
+    return {"status": "ok"}
+
+@app.get("/api/debug")
+async def debug_connectivity():
+    """
+    Comprehensive diagnostic endpoint that tests every layer of connectivity
+    between the HPC server and Google's Gemini API. Visit this URL in a browser
+    to see exactly what's failing.
+    """
+    import time
+    import socket
+    import ssl
+
+    results = {
+        "1_environment": {},
+        "2_dns_resolution": {},
+        "3_tcp_connection": {},
+        "4_ssl_handshake": {},
+        "5_gemini_api_key": {},
+        "6_gemini_api_call": {},
     }
 
+    GEMINI_HOST = "generativelanguage.googleapis.com"
+    GEMINI_PORT = 443
+
+    # ── Step 1: Environment & Proxy Detection ──
+    proxy_vars = {}
+    for var in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "NO_PROXY", "no_proxy", "ALL_PROXY"]:
+        val = os.environ.get(var)
+        if val:
+            proxy_vars[var] = val
+    results["1_environment"] = {
+        "proxy_variables": proxy_vars if proxy_vars else "None detected",
+        "python_version": __import__("sys").version,
+        "platform": __import__("platform").platform(),
+    }
+
+    # ── Step 2: DNS Resolution ──
+    try:
+        t0 = time.time()
+        ips = socket.getaddrinfo(GEMINI_HOST, GEMINI_PORT, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        dns_time = round(time.time() - t0, 3)
+        resolved_ips = list(set(addr[4][0] for addr in ips))
+        results["2_dns_resolution"] = {
+            "status": "OK",
+            "host": GEMINI_HOST,
+            "resolved_ips": resolved_ips,
+            "time_seconds": dns_time,
+        }
+    except Exception as e:
+        results["2_dns_resolution"] = {
+            "status": "FAILED",
+            "host": GEMINI_HOST,
+            "error": str(e),
+            "hint": "DNS resolution failed. The HPC server cannot resolve Google API hostnames. Check /etc/resolv.conf or ask your HPC admin about DNS settings."
+        }
+        results["3_tcp_connection"] = {"status": "SKIPPED", "reason": "DNS failed"}
+        results["4_ssl_handshake"] = {"status": "SKIPPED", "reason": "DNS failed"}
+        results["6_gemini_api_call"] = {"status": "SKIPPED", "reason": "DNS failed"}
+        return results
+
+    # ── Step 3: TCP Connection ──
+    try:
+        t0 = time.time()
+        sock = socket.create_connection((GEMINI_HOST, GEMINI_PORT), timeout=10)
+        tcp_time = round(time.time() - t0, 3)
+        sock.close()
+        results["3_tcp_connection"] = {
+            "status": "OK",
+            "target": f"{GEMINI_HOST}:{GEMINI_PORT}",
+            "time_seconds": tcp_time,
+        }
+    except Exception as e:
+        results["3_tcp_connection"] = {
+            "status": "FAILED",
+            "target": f"{GEMINI_HOST}:{GEMINI_PORT}",
+            "error": str(e),
+            "hint": "TCP connection failed. The HPC firewall is blocking outbound HTTPS (port 443) to Google. Contact your HPC admin to allow outbound traffic to generativelanguage.googleapis.com:443."
+        }
+        results["4_ssl_handshake"] = {"status": "SKIPPED", "reason": "TCP failed"}
+        results["6_gemini_api_call"] = {"status": "SKIPPED", "reason": "TCP failed"}
+        return results
+
+    # ── Step 4: SSL/TLS Handshake ──
+    try:
+        t0 = time.time()
+        context = ssl.create_default_context()
+        sock = socket.create_connection((GEMINI_HOST, GEMINI_PORT), timeout=10)
+        ssock = context.wrap_socket(sock, server_hostname=GEMINI_HOST)
+        ssl_time = round(time.time() - t0, 3)
+        cert = ssock.getpeercert()
+        issuer = dict(x[0] for x in cert.get("issuer", []))
+        results["4_ssl_handshake"] = {
+            "status": "OK",
+            "tls_version": ssock.version(),
+            "cert_issuer": issuer.get("organizationName", "Unknown"),
+            "cert_subject": dict(x[0] for x in cert.get("subject", [])).get("commonName", "Unknown"),
+            "time_seconds": ssl_time,
+        }
+        ssock.close()
+    except ssl.SSLCertVerificationError as e:
+        results["4_ssl_handshake"] = {
+            "status": "FAILED - CERTIFICATE ERROR",
+            "error": str(e),
+            "hint": "SSL certificate verification failed. Your HPC likely has an SSL-intercepting proxy (corporate firewall). You may need to set REQUESTS_CA_BUNDLE or SSL_CERT_FILE environment variable, or install the HPC's CA certificate."
+        }
+        results["6_gemini_api_call"] = {"status": "SKIPPED", "reason": "SSL failed"}
+        return results
+    except Exception as e:
+        results["4_ssl_handshake"] = {
+            "status": "FAILED",
+            "error": str(e),
+            "hint": "SSL handshake failed. Check if the HPC has outdated CA certificates (try: update-ca-certificates)."
+        }
+        results["6_gemini_api_call"] = {"status": "SKIPPED", "reason": "SSL failed"}
+        return results
+
+    # ── Step 5: API Key ──
+    api_key = get_gemini_api_key()
+    results["5_gemini_api_key"] = {
+        "configured": bool(api_key),
+        "key_prefix": api_key[:8] + "..." if api_key else None,
+        "source": "environment or secrets.toml",
+    }
+    if not api_key:
+        results["6_gemini_api_call"] = {"status": "SKIPPED", "reason": "No API key configured"}
+        return results
+
+    # ── Step 6: Live Gemini API Call ──
+    try:
+        from google import genai
+        t0 = time.time()
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents="Reply with exactly: CONNECTION_OK"
+        )
+        api_time = round(time.time() - t0, 3)
+        results["6_gemini_api_call"] = {
+            "status": "OK",
+            "response_preview": (response.text or "")[:100],
+            "time_seconds": api_time,
+        }
+    except Exception as e:
+        results["6_gemini_api_call"] = {
+            "status": "FAILED",
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "hint": "The network layers are fine but the Gemini SDK call failed. This could be an invalid API key, quota exhaustion, or an SDK-level proxy issue."
+        }
+
+    return results
 @app.post("/api/chat")
 async def chat_assistant(req: ChatRequest):
     """
