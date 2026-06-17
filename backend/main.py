@@ -352,7 +352,7 @@ async def debug_connectivity():
         t0 = time.time()
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents="Reply with exactly: CONNECTION_OK"
         )
         api_time = round(time.time() - t0, 3)
@@ -429,17 +429,10 @@ Be concise (2-3 paragraphs maximum for scientific answers). Keep it highly scien
             yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
 
             # Launch Gemini call in background thread
-            from google.genai import types as genai_types
-
             def _call_gemini():
                 return client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt_text,
-                    config=genai_types.GenerateContentConfig(
-                        thinking_config=genai_types.ThinkingConfig(
-                            thinking_budget=1024
-                        )
-                    )
+                    model="gemini-2.0-flash",
+                    contents=prompt_text
                 )
 
             gemini_task = asyncio.ensure_future(asyncio.to_thread(_call_gemini))
@@ -447,7 +440,7 @@ Be concise (2-3 paragraphs maximum for scientific answers). Keep it highly scien
             # Send heartbeats every 10s while waiting for the Gemini response
             # This keeps the HPC reverse-proxy connection alive
             HEARTBEAT_INTERVAL = 10  # seconds
-            TOTAL_TIMEOUT = 300      # seconds
+            TOTAL_TIMEOUT = 600      # seconds
             elapsed = 0
 
             while not gemini_task.done():
