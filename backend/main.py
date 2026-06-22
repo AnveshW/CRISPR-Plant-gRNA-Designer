@@ -431,7 +431,7 @@ Be concise (2-3 paragraphs maximum for scientific answers). Keep it highly scien
             # Launch Gemini call in background thread
             def _call_gemini():
                 return client.models.generate_content(
-                    model="gemini-2.0-flash",
+                    model="gemini-2.5-flash",
                     contents=prompt_text
                 )
 
